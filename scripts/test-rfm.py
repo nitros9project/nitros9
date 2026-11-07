@@ -148,6 +148,23 @@ def tests(binary,s,level):
     p=peer();assert p.run('getstt',0,s['SS.Ready'])[:2]==(0,0) and not p.tx
     p=peer();assert p.run('getstt',0,0xfe)[0]==1 and not p.tx
     p=peer();assert p.run('setstt',4,s['SS.Size'])[0]==1 and not p.tx
+    record=b'old'+bytes(27)+b'new'+bytes(27)
+    for response in (b'\x00', b'\xda', None):
+        p=peer();p.m.write_byte(PD+s['PD.MOD'],0x82)
+        result=p.run('setstt',60,s['SS.Rename'],data=record,responses=[b'\x00',response])
+        assert p.tx==[bytes([0xd6,11,7,s['SS.Rename']]),bytes([0xd6,12,7,s['SS.Rename']])+record],p.tx
+        expected=0 if response==b'\x00' else (s['E$Read'] if response is None else 218)
+        assert result[:2]==(int(expected!=0),expected),result
+    p=peer();p.m.write_byte(PD+s['PD.MOD'],0x82)
+    assert p.run('setstt',60,s['SS.Rename'],data=record,responses=[None])[:2]==(1,s['E$UnkSvc'])
+    assert p.tx==[bytes([0xd6,11,7,s['SS.Rename']])]
+    for n,mode,payload in [(59,0x82,record),(60,0x81,record),(60,0x82,b'..'+bytes(28)+b'new'+bytes(27))]:
+        p=peer();p.m.write_byte(PD+s['PD.MOD'],mode)
+        assert p.run('setstt',n,s['SS.Rename'],data=payload)[0]==1 and not p.tx
+    if level==2:
+        p=peer();p.fail_move=True;p.m.write_byte(PD+s['PD.MOD'],0x82)
+        assert p.run('setstt',60,s['SS.Rename'],data=record)[0]==1 and not p.tx
+
     p=peer();assert p.run('getstt',0,s['SS.Size'],responses=[b'\x00\x01\x02\x03'])[:2]==(0,0)
     assert p.word(REGS+s['R$X'])==1 and p.word(REGS+s['R$U'])==0x203
     p=peer();p.m.write_byte(PD+s['PD.CNT'],1)

@@ -1402,6 +1402,8 @@ Gst640              lda       #D$GSTA             get getstat function offset
 *        B = errcode
 *
 SetStat             ldb       R$B,u               get function code
+                    cmpb      #SS.Rename
+                    lbeq      Rename
 * TODO: remove next line since SS.Opt is 0
                     cmpb      #SS.Opt
                     bne       Sst659              not SS.Opt, skip ahead
@@ -3394,6 +3396,156 @@ L12B5               ldy       PE.PDptr,y
                     puls      a
                     endc
 L12C6               puls      pc,u,x
+
+* SS.Rename: parent directory path, X=old[30]+new[30], Y=60.
+* Work on directory entries through RBF; never open or modify the child FD.
+RNRec               equ       0
+RNPos               equ       60
+RNFound             equ       64
+RNOldLen            equ       68
+RNNewLen            equ       69
+RNSeen              equ       70
+RNLocked            equ       71
+RNWork              equ       72
+Rename              pshs      x,y,u
+                    leas      -RNWork,s
+                    clr       RNLocked,s
+                    clr       RNSeen,s
+                    ldd       PD.CP,y
+                    std       RNPos,s
+                    ldd       PD.CP+2,y
+                    std       RNPos+2,s
+                    ldd       R$Y,u
+                    cmpd      #60
+                    lbne      RNInvalid
+                    lda       PD.MOD,y
+                    anda      #DIR.!WRITE.
+                    cmpa      #DIR.!WRITE.
+                    lbne      RNDenied
+                    ldx       R$X,u
+                    pshs      y,u
+                    leau      4,s
+                    ldy       #60
+                    lbsr      Writ5CB
+                    puls      y,u
+                    lbcs      RNDone
+                    leax      ,s
+                    lbsr      RNName
+                    lbcs      RNDone
+                    stb       RNOldLen,s
+                    lbsr      RNName
+                    lbcs      RNDone
+                    stb       RNNewLen,s
+                    lbsr      L1237
+                    lbcs      RNDone
+                    clra
+                    clrb
+                    std       PD.CP,y
+                    std       PD.CP+2,y
+                    ifgt      Level-1
+                    ldx       PD.Exten,y
+                    tst       PE.Lock,x
+                    lbne      RNBusy
+                    lda       #FileLock
+                    sta       PE.Lock,x
+                    inc       RNLocked,s
+                    ldx       #$FFFF
+                    ldd       #$FFFF
+                    lbsr      L0B1B
+                    lbcs      RNCleanup
+                    endc
+                    lda       #DIR.!WRITE.
+                    lbsr      ChkAttrs
+                    lbcs      RNCleanup
+                    lbsr      Open1CE
+                    lbsr      L1237
+                    lbcs      RNCleanup
+                    ldd       #64
+                    std       PD.CP+2,y
+                    lbsr      L0957
+RNScan              bcs       RNEndScan
+                    tst       ,x
+                    beq       RNNext
+                    pshs      x,y
+                    tfr       x,y
+                    leax      4,s
+                    ldb       RNOldLen+4,s
+                    lbsr      RNCompare
+                    puls      x,y
+                    bcs       RNCheckNew
+                    ldd       PD.CP,y
+                    std       RNFound,s
+                    ldd       PD.CP+2,y
+                    std       RNFound+2,s
+                    inc       RNSeen,s
+                    bra       RNNext
+RNCheckNew          pshs      x,y
+                    tfr       x,y
+                    leax      34,s
+                    ldb       RNNewLen+4,s
+                    lbsr      RNCompare
+                    puls      x,y
+                    bcc       RNExists
+RNNext              lbsr      L0942
+                    bra       RNScan
+RNEndScan           cmpb      #E$EOF
+                    bne       RNError
+                    tst       RNSeen,s
+                    beq       RNMissing
+                    lbsr      L1237
+                    bcs       RNCleanup
+                    ldd       RNFound,s
+                    std       PD.CP,y
+                    ldd       RNFound+2,s
+                    std       PD.CP+2,y
+                    lbsr      L0957
+                    bcs       RNCleanup
+                    tfr       x,u
+                    ldb       #29
+RNClear             clr       ,u+
+                    decb
+                    bne       RNClear
+                    leau      30,s
+                    ldb       RNNewLen,s
+RNCopy              lda       ,u+
+                    sta       ,x+
+                    decb
+                    bne       RNCopy
+                    lda       -1,x
+                    ora       #$80
+                    sta       -1,x
+                    lbsr      L1205
+                    bra       RNCleanup
+RNExists            ldb       #E$CEF
+                    bra       RNError
+RNMissing           ldb       #E$PNNF
+                    bra       RNError
+RNBusy              ldb       #E$Share
+RNError             orcc      #1
+RNCleanup           pshs      b,cc
+                    lbsr      L1237
+                    ifgt      Level-1
+                    tst       RNLocked+2,s
+                    beq       RNUnlocked
+                    pshs      y
+                    ldy       PD.Exten,y
+                    lbsr      L0ACF
+                    puls      y
+RNUnlocked          equ       *
+                    endc
+                    ldd       RNPos+2,s
+                    std       PD.CP,y
+                    ldd       RNPos+4,s
+                    std       PD.CP+2,y
+                    puls      b,cc
+RNDone              leas      RNWork,s
+                    puls      x,y,u,pc
+RNInvalid           ldb       #E$BPNam
+                    bra       RNFail
+RNDenied            ldb       #E$FNA
+RNFail              orcc      #1
+                    bra       RNDone
+                    use       rename-name.d
 
                     emod
 eom                 equ       *

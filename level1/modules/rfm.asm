@@ -817,7 +817,78 @@ StatusBytesDone     leas      2,s
 
 * Unimplemented setters fail before sending anything to the server. The old
 * two-byte request omitted path and status and could desynchronize the stream.
-setstt              lbra      StatusUnsupported
+setstt              ldb       R$B,u
+                    cmpb      #SS.Rename
+                    lbne      StatusUnsupported
+                    pshs      cc
+                    lbsr      RenameStatus
+                    lbra      BusReturn
+RenameStatus        pshs      x,y,u
+                    leas      -64,s
+                    ldd       R$Y,u
+                    cmpd      #60
+                    bne       RenameBad
+                    lda       PD.MOD,y
+                    anda      #DIR.!WRITE.
+                    cmpa      #DIR.!WRITE.
+                    bne       RenameDenied
+                    lda       #OP_VFM
+                    ldb       #DW.SetStt
+                    std       ,s
+                    lda       PD.PD,y
+                    ldb       #SS.Rename
+                    std       2,s
+                    ldx       R$X,u
+                    pshs      y,u
+                    leau      8,s
+                    ldy       #60
+                    lbsr      FromCaller
+                    puls      y,u
+                    bcs       RenameDone
+                    leax      4,s
+                    lbsr      RNName
+                    bcs       RenameDone
+                    lbsr      RNName
+                    bcs       RenameDone
+* Probe support before sending a payload. Older servers discard unknown
+* GetStat codes; their bounded timeout leaves the stream aligned.
+                    orcc      #IntMasks
+                    lda       #DW.GetStt
+                    sta       1,s
+                    leax      ,s
+                    ldy       #4
+                    lbsr      Send
+                    leas      -1,s
+                    leax      ,s
+                    ldy       #1
+                    lbsr      Receive
+                    bcs       RenameNoServer
+                    ldb       ,s
+                    leas      1,s
+                    tstb
+                    bne       RenameError
+                    lda       #DW.SetStt
+                    sta       1,s
+                    leax      ,s
+                    ldy       #64
+                    lbsr      Send
+                    leax      ,s
+                    ldy       #1
+                    lbsr      Receive
+                    bcs       RenameDone
+                    ldb       ,s
+                    beq       RenameDone
+                    orcc      #1
+                    bra       RenameDone
+RenameNoServer      leas      1,s
+                    ldb       #E$UnkSvc
+                    bra       RenameError
+RenameDenied        ldb       #E$FNA
+                    bra       RenameError
+RenameBad           ldb       #E$BPNam
+RenameError         orcc      #1
+RenameDone          leas      64,s
+                    puls      x,y,u,pc
 
 ******************************
 *
@@ -927,6 +998,8 @@ ReceiveFailed       puls      cc,y,u
                     ldb       #E$Read
                     orcc      #1
                     rts
+
+                    use       rename-name.d
 
                     emod
 eom                 equ       *
