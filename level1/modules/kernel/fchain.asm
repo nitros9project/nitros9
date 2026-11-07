@@ -5,8 +5,8 @@
 ;;; Entry:  A = The type/language byte.
 ;;;         B = Size of the optional data area (in pages).
 ;;;         X = Address of the module name or filename.
-;;;         Y = Size of the parameter area (in pages). The default is 0.
-;;;         U = Starting address of the parameter area. This must be at least one page.
+;;;         Y = Size of the parameter area in bytes. The default is 0.
+;;;         U = Starting address of the parameter area.
 ;;;
 ;;; Exit:   None.
 ;;;
@@ -27,7 +27,7 @@
                   IFEQ    Level-1 ; begin conditional assembly for Level-1
 
 * F$Chain user state entry point.
-FChain              bsr       DoChain   ; do the F$Chain
+FChain              bsr       SetupPrc  ; configure the replacement process
                     bcs       chainerr@ ; branch if error
                     orcc      #IntMasks ; mask interrupts
                     ldb       P$State,x ; get process state
@@ -36,7 +36,7 @@ FChain              bsr       DoChain   ; do the F$Chain
 resched@            os9       F$AProc   ; add it to active process queue
                     os9       F$NProc   ; activate it
 * F$Chain system state entry point.
-SFChain             bsr       DoChain   ; do the F$Chain
+SFChain             bsr       SetupPrc  ; configure the replacement process
                     bcc       resched@  ; branch if OK
 chainerr@           pshs      b         ; save off B for now
                     stb       <P$Signal,x ; save off error code
@@ -69,6 +69,8 @@ failed@             pshs      b         ; save the error code
 ret@                comb                ; set the carry to indicate an error
                     puls      pc,u,b    ; recover the error code and U and return
 
+* Shared setup restores U and returns the current descriptor in X, so both
+* Chain entry points can call it directly without a preservation wrapper.
 SetupPrc            ldx       <D.Proc   ; get current process descriptor
                     pshs      u,x       ; save off
                     ldd       <D.UsrSvc ; get user service table
@@ -102,9 +104,7 @@ cmpmem@             leay      ,u        ; Y = address of module
                     cmpd      M$Mem,y   ; compare passed memory to module's
                     bcc       alloc@    ; branch if requested amount is the same or greater than the module's memory
                     ldd       M$Mem,y   ; else load D with module's memory
-alloc@              addd      #$0000    ; is this needed??
-                    bne       allcmem@  ; and this???
-allcmem@            os9       F$Mem     ; allocate requested memory
+alloc@              os9       F$Mem     ; allocate requested memory
                     bcs       ex@       ; branch if error
                     subd      #R$Size   ; subtract registers
                     subd      R$Y,u     ; subtract parameter area
