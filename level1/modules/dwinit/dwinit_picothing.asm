@@ -6,6 +6,8 @@
 *
 * The virtual ACIA has no physical baud rate — a master reset
 * followed by 8N1 configuration is all that is needed.
+*
+* Exit:  carry clear, the init cannot fail
 
 DWInit
                     pshs      a
@@ -13,4 +15,5 @@ DWInit
                     sta       >Aux.Ctrl
                     lda       #$15      8N1, RTS low, no TX IRQ, no RX IRQ
                     sta       >Aux.Ctrl
+                    andcc     #$FE      clear carry, the init cannot fail
                     puls      a,pc

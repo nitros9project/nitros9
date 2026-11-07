@@ -124,7 +124,7 @@ dupok@              sta       ,y+       ; store it in the child process descript
                     bne       duploop@  ; and branch back if not done
 **** I/O related process descriptor setup
                     endc
-                    bsr       SetupPrc  ; set up process
+                    lbsr      SetupPrc  ; set up process
                     bcs       ex@       ; branch if an error occured
                     puls      y         ; get the parent process descriptor
                     sty       <D.Proc   ; and make it the current process

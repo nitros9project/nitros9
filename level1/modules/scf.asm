@@ -902,7 +902,9 @@ CheckDeviceBusy     ldx       V$STAT,x  ; get device static storage address
                     ldx       >D.Proc   ; get current process
                   ENDC
                     ldb       P$Signal,x ; get signal code
+                    ldx       1,s       ; get the device table entry pointer again for CheckDeviceBusy
                     lda       ,s        ; get our process id # again for CheckDeviceBusy
+                    tstb                ; was a signal received?
                     beq       CheckDeviceBusy ; no signal go try again
                     coma                ; set carry
                     puls      x,a,pc    ; restore device table ptr (eat a) & return

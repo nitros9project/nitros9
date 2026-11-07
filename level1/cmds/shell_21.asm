@@ -530,6 +530,19 @@ Ex lbsr shopts process pre-param options
  tfr x,d
  subd <prmptr compute parameter size
  std <prmsiz
+* The kernel runs F$Chain on this stack, and loading the module from disk
+* needs more room than the line buffer leaves below $FF.  Move the name
+* and parameters to the top of the line buffer, out of its way.
+ leay stack,u end of line buffer
+shex10 lda ,-x move name & parameters up
+ sta ,-y
+ cmpx <modnam
+ bhi shex10 ..until whole name moved
+ tfr y,d
+ subd <modnam (d)=distance moved
+ addd <prmptr
+ std <prmptr update parameter ptr
+ sty <modnam update module name ptr
  leas $FF,u move stack onto dp
  lbsr setprm setup chain/fork parameters
  os9 F$Chain chain to process

@@ -13,6 +13,7 @@ default.proraw
 .sys/
 recipes/**/cfg/
 recipes/picothing/build-logs/
+recipes/picothing/*/inetd.conf
 level2/coco3/defs/*.d
 
 # Assembler/linker listings and maps

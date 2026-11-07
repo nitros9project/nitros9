@@ -549,6 +549,12 @@ PullCore            lbsr      SetBlkC2C3
                     ldd       #128
                     lbsr      CpyBlk
                   ENDC
+* The mouse pointer's image, every switch: each terminal's buffer has one
+* (GF.TermNew's arrow, or what SS.MsPtr loaded).
+                    ldu       #$6000+T.MSPTR
+                    ldy       #$2000+$0C00 ; vicky_BLK+$0C00
+                    ldd       #256
+                    lbsr      CpyBlk
 * The sprite registers are filled from this terminal's REGISTERED table,
 * not from a shadow - see SprRestore, called at the end of PullCore where
 * the 16K buffer is finished with and slots 3/4 are free.
@@ -1078,13 +1084,25 @@ wsfg@               puls      b
                     puls      a
                     sta       >gr.LiveTerm
 * Clamp V.CurRow and resync V.CurPos (a DWSet can leave the row past the
-* window), then put the hardware cursor there.
+* window), then put the hardware cursor there, with this terminal's
+* enable, flash rate, character and colour.
                     lbsr      GSCalcPos
-                    ldx       #TXT.Base
+                    bsr       CrsrPut
                     lda       V.CurCol,u
                     sta       VKY_TXT_CURSOR_X_REG_L,x
                     lda       V.CurRow,u
                     sta       VKY_TXT_CURSOR_Y_REG_L,x
+                    rts
+* CrsrPut - program the text cursor's control, character and colour
+* ($FFD0/$FFD2/$FFD3) from terminal U's copy (05 20-05 24).
+* Exit: X = TXT.Base.  Clobbers A.
+CrsrPut             ldx       #TXT.Base
+                    lda       V.CrsrCtl,u
+                    sta       VKY_TXT_CURSOR_CTRL_REG,x
+                    lda       V.CrsrChr,u
+                    sta       VKY_TXT_CURSOR_CHAR_REG,x
+                    lda       V.CrsrCol,u
+                    sta       VKY_TXT_CURSOR_COLR_REG,x
                     rts
 * GSTermPtrs - vtio's SetTermGrfPtrs: aim gr.TermBlk/VStaStorU/VBlk/U5
 * at one terminal.  Entry X = its gr.TermTbl entry.  Clobbers D.
@@ -1444,6 +1462,8 @@ SetSttTbl           fcb       SS.AScrn
                     fdb       GrfMod+SSClutWrite
                     fcb       SS.MsCfg
                     fdb       GrfMod+SSMsCfg
+                    fcb       SS.MsPtr
+                    fdb       GrfMod+SSMsPtr
                     fcb       0
 
 * GetStat SS.ScSiz - R$X = columns, R$Y = rows
@@ -3005,6 +3025,7 @@ gco8@               leas      1,s       ; drop the size bit
 GFInitDisp          lbsr      SetBlkC2C3 ; u = this terminal's statics
                     leax      DispRegs,pcr
                     leay      V.V_MCR,u
+                    pshs      u
                     ldu       #TXT.Base
                     ldb       #16
 seed@               lda       ,x+
@@ -3012,15 +3033,19 @@ seed@               lda       ,x+
                     sta       ,u+       ; register
                     decb
                     bne       seed@
+                    puls      u
                     ldx       #TXT.Base
-                    lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
-                    sta       VKY_TXT_CURSOR_CTRL_REG,x
                     clra
                     clrb
                     std       VKY_TXT_CURSOR_Y_REG_H,x
                     std       VKY_TXT_CURSOR_X_REG_H,x
-                    lda       #'_
-                    sta       VKY_TXT_CURSOR_CHAR_REG,x
+* The cursor colour is the core's own, read once: it is every terminal's
+* default (GF.TermNew).  Then the copy GF.TermNew seeded goes to the
+* hardware: on, flashing, '_'.
+                    lda       VKY_TXT_CURSOR_COLR_REG,x
+                    sta       >gr.CrsrCol
+                    sta       V.CrsrCol,u
+                    lbsr      CrsrPut
 * Every sprite record off, once, so gr.SprDirty's "they are all clear" is
 * true from the start rather than a guess about what the core left behind.
                     lbsr      SprMapC0  ; vicky_BLK in slot 1
@@ -3028,24 +3053,32 @@ seed@               lda       ,x+
                     clrb
                     lbsr      SprClrFrom
                     clr       >gr.SprDirty
-* The mouse pointer: 16x16 at VICKY_BLK+$0C00, from runs of colour,length
-* ($00 transparent, $01 black, $FF white), ended by 0,0.  mousedrv found
+* The mouse pointer: 16x16 at VICKY_BLK+$0C00, from the arrow GF.TermNew
+* drew in this terminal's buffer (still in slots 3/4).  mousedrv found
 * the mouse before grfdrv was loaded but leaves it hidden until the image
 * is here; show it now if there is one.
-                    ldx       #$2000+$0C00 ; the pointer image, through slot 1
-                    leay      MsPtrData,pcr
+                    ldu       #$6000+T.MSPTR
+                    ldy       #$2000+$0C00 ; the pointer image, through slot 1
+                    ldd       #256
+                    lbsr      CpyBlk
+                    tst       >gr.MSFound
+                    beq       msx@
+                    lda       #$01      ; shown, mode 0 (as mousedrv)
+                    sta       MS_MEN
+msx@                clrb
+                    jmp       >GrfMod+SysRet
+
+* MsPtrDraw - draw the default arrow at X: runs of colour,length ($00
+*   transparent, $01 black, $FF white), ended by 0,0.  256 bytes.
+*   Exit: X = past the image; D and Y changed.
+MsPtrDraw           leay      MsPtrData,pcr
 msrun@              ldd       ,y++      ; colour, length
                     beq       msdone@
 msdot@              sta       ,x+
                     decb
                     bne       msdot@
                     bra       msrun@
-msdone@             tst       >gr.MSFound
-                    beq       msx@
-                    lda       #$01      ; shown, mode 0 (as mousedrv)
-                    sta       MS_MEN
-msx@                clrb
-                    jmp       >GrfMod+SysRet
+msdone@             rts
 
 MsPtrData           fcb       255,2,0,14
                     fcb       255,1,1,1,255,1,0,13
@@ -3164,6 +3197,12 @@ tnms@               clr       ,y+
                     lbsr      SetBlkC2C3 ; u = the new statics, slots 3/4 = its buffer
                     ldb       T.Block,x
                     stb       V.TermBufBlk,u
+* Its mouse pointer starts as the arrow, in its buffer: every switch to it
+* programs the image from there (PullCore).
+                    pshs      x
+                    ldx       #$6000+T.MSPTR
+                    lbsr      MsPtrDraw
+                    puls      x
 * It has registered no sprite table.  A row is never inherited: it names
 * another process's memory.
                     lda       >gr.b1
@@ -3191,6 +3230,16 @@ tnms@               clr       ,y+
                     clr       V.LastCh,u
                     clr       V.Reverse,u
                     clr       V.ST,u
+* The text cursor starts on, flashing, '_', in the core's colour - not the
+* live terminal's, so a program that hid its cursor does not hide it on
+* terminals opened later.  (The first terminal's colour is read in
+* GF.InitDisp, after this.)
+                    lda       #Vky_Cursor_Enable|Vky_Cursor_Flash_Rate0|Vky_Cursor_Flash_Rate1
+                    sta       V.CrsrCtl,u
+                    lda       #'_
+                    sta       V.CrsrChr,u
+                    lda       >gr.CrsrCol
+                    sta       V.CrsrCol,u
 * The bitmap / CLUT-block / tile mirror starts "everything off" and is
 * never inherited: a new terminal has no bitmaps of its own, and pointing
 * it at another terminal's is the bug the mirror exists to prevent.
@@ -4482,6 +4531,50 @@ ClutDone            leas      6,s
                     jmp       >GrfMod+SysRet
 ClutOff             leas      6,s
 ClutBad             comb
+                    ldb       #E$IllArg
+                    jmp       >GrfMod+SysRet
+
+*******************************************************************
+* SetStat SS.MsPtr - this terminal's mouse pointer image.
+*   R$Y = 1: R$X = 256 bytes, 16 rows of 16 pixels, each a graphics LUT0
+*                  index ($00 = transparent)
+*   R$Y = 0: the default arrow
+*   (Not R$X = 0 for the arrow: a Level 2 process's data starts at $0000.)
+* The image goes to T.MSPTR in the terminal's 16K switch buffer (slot 4),
+*   which PullBuf copies to VICKY_BLK+$0C00 on every switch, and from
+*   there to the pointer memory too when the terminal is live.  It stays
+*   until the terminal closes or the next SS.MsPtr.
+* Exit: B = 0, or carry + E$IllArg (R$Y not 0 or 1, or the 256 bytes run
+*   off the top of the caller's map).
+*******************************************************************
+SSMsPtr             ldd       R$Y,x
+                    cmpd      #1
+                    bhi       ill@
+                    lda       V.TermLive,u
+                    pshs      a
+                    tstb
+                    beq       dflt@
+                    ldd       R$X,x
+                    ldy       #256
+                    lbsr      MapCallBuf ; u = the image through slot 1
+                    bcs       bad@
+                    ldy       #$6000+T.MSPTR
+                    ldd       #256
+                    lbsr      CpyBlk
+                    bra       live@
+dflt@               ldx       #$6000+T.MSPTR
+                    lbsr      MsPtrDraw
+live@               tst       ,s+       ; live?
+                    beq       done@     ; no - PullBuf programs it on the switch
+                    lbsr      SprMapC0  ; vicky_BLK in slot 1
+                    ldu       #$6000+T.MSPTR
+                    ldy       #$2000+$0C00
+                    ldd       #256
+                    lbsr      CpyBlk
+done@               clrb
+                    jmp       >GrfMod+SysRet
+bad@                leas      1,s
+ill@                comb
                     ldb       #E$IllArg
                     jmp       >GrfMod+SysRet
 

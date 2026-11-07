@@ -1063,47 +1063,30 @@ l@                  lda       ,u+       ; get the source byte
 *
 * Entry: U = The pointer to the register stack in the process descriptor.
 CpUsrStkTo          pshs      cc,x,y,u  ; preserve registers
-                    ldb       P$Task,x  ; get the task #
-                    ldx       P$SP,x    ; and the stack pointer
-                    lbsr      FMoveLater ; calculate the block offset (only affects A&X)
-                    leax      -$6000,x  ; adjust the pointer to where the memory map will be
-                    bra       KrnBlockNumberWhere ; go copy it
+                    lda       P$Task,x  ; copy from the process's task
+                    ldb       <D.SysTsk ; to the system task
+                    ldx       P$SP,x    ; from the process's stack
+                    bra       CpRegStk  ; go copy it
 
 * Copy the register stack from system to user.
 *
 * Entry: U = The pointer to the register stack in the process descriptor.
 CpSysStkTo          pshs      cc,x,y,u  ; preserve registers
-                    ldb       P$Task,x  ; get the task # of destination
-                    ldx       P$SP,x    ; and the stack pointer
-                    lbsr      FMoveLater ; calculate the block offset (only affects A&X)
-                    leax      -$6000,x  ; adjust the pointer to where the memory map will be
-                    exg       x,y       ; swap pointers & copy
+                    lda       <D.SysTsk ; copy from the system task
+                    ldb       P$Task,x  ; to the process's task
+                    ldx       P$SP,x    ; get the process's stack
+                    exg       x,u       ; and copy from the register stack to it
 
-* Copy a register stack.
+* Copy a register stack.  F$Move maps both sides through their own DAT
+* images, so this works wherever the process descriptor is, even in the
+* $A000-$DFFF window that F$Move uses.
 *
-* Entry: X = The source register stack.
-*        Y = The destination register stack.
-*        A = The offset into the DAT image of stack.
-*        B = The task number.
-KrnBlockNumberWhere leau      a,u       ; point to the block number where stack is
-                    lda       1,u       ; get the first block
-                    ldb       3,u       ; get a second just in case of overlap
-                    orcc      #IntMasks ; shutdown interrupts while we do this
-                    std       >DAT.Regs+5 ; map in the blocks
-                  IFNE    H6309   ; begin conditional assembly for H6309
-                    ldw       #R$Size   ; get the size of register stack
-                    tfm       x+,y+     ; copy it
-                  ELSE
-                    ldb       #R$Size/2 ; get the size of the register stack
-l@                  ldu       ,x++      ; get the source bytes
-                    stu       ,y++      ; and save them in the destination
-                    decb                ; decrement the counter
-                    bne       l@        ; branch if not done
-                  ENDC
-                    ldx       <D.SysDAT ; get the system DAT pointer
-                    lda       $0B,x     ; get the first block we took out
-                    ldb       $0D,x     ; and the second
-                    std       >DAT.Regs+5 ; and restore the DAT
+* Entry: A = The source task number.
+*        B = The destination task number.
+*        X = The source register stack.
+*        U = The destination register stack.
+CpRegStk            ldy       #R$Size   ; get the size of the register stack
+                    lbsr      FMoveTarget ; copy it
                     puls      cc,x,y,u,pc ; restore & return
 
 * Process software interrupts from system state.

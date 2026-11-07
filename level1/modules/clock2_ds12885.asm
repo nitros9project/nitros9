@@ -9,7 +9,9 @@
 * which previously clobbered the good time the Pico had set.  GetTime
 * reads the chip every minute; SetTime writes it only on a deliberate
 * F$STime (the setime command).  The chip is held in binary, 24-hour
-* mode, so its registers map straight onto the D.Time packet.
+* mode, so its registers map straight onto the D.Time packet.  A set
+* also starts the oscillator, so setime brings a stopped chip back to
+* life.
 *
 * Each register access is a two-step, non-atomic pair (select then
 * read/write), so interrupts are masked around GetTime and SetTime.
@@ -19,6 +21,8 @@
 * ------------------------------------------------------------------
 *   1      2026/09/16
 * Created for the Pico-Thing DS12885.
+*   2      2026/10/25
+* SetTime starts the oscillator, so a set revives a stopped chip.
 
                     nam       Clock2
                     ttl       DS12885 RTC driver
@@ -30,7 +34,7 @@
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
 * DS12885 register numbers (MC146818 compatible)
 R.Sec               equ       0         seconds
@@ -44,6 +48,7 @@ R.RegB              equ       11        control B
 
 * register bit definitions
 b.UIP               equ       %10000000 reg A: update in progress
+DV.Run              equ       %00100000 reg A: oscillator on, divider counting
 b.SET               equ       %10000000 reg B: halt updates for read or write
 b.DM                equ       %00000100 reg B: data mode, 1 = binary
 b.24                equ       %00000010 reg B: 1 = 24-hour
@@ -172,6 +177,9 @@ wtyr@               lda       #R.Year
                     lbsr      RTCWr
                     ldb       ,y+       ; second
                     lda       #R.Sec
+                    lbsr      RTCWr
+                    ldb       #DV.Run   ; start the oscillator in case it is stopped
+                    lda       #R.RegA
                     lbsr      RTCWr
                     ldb       #RunMode  ; release the freeze, updates resume
                     lda       #R.RegB

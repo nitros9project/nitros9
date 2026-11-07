@@ -12,6 +12,9 @@
 *
 *   3      2003/01/07  Boisy G. Pitre
 * Renamed to devs ala OS-9/68K, reworked.
+*
+*   4      2026/09/27  Mark Murray
+* Added -a to also list every device descriptor module in memory.
 
                     nam       devs
                     ttl       Show device table entries
@@ -23,7 +26,7 @@
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       3
+edition             set       4
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -39,12 +42,19 @@ ddevtbl             rmb       2                   device table pointer
 devcount            rmb       1
 descptr             rmb       2
 numbytes            rmb       1
+allflag             rmb       1                   nonzero for -a
+mdcur               rmb       2                   current module directory entry
+mdend               rmb       2                   end of the module directory
 lnbuff              rmb       80
                     ifgt      Level-1
 datimg              rmb       4
+mdsys               rmb       2                   system address of the module directory
+datptr              rmb       2                   local copy of the module's DAT image
+modptr              rmb       2                   module address within its DAT image
 devtbcpy            rmb       MaxEnts*DEVSIZ
 descrip             rmb       256
 syspdesc            rmb       P$Size
+mdbuf               rmb       4096                copy of the module directory
                     endc
 stack               rmb       200
 size                equ       .
@@ -72,12 +82,35 @@ Header2L            equ       *-Header2
 Undln               fcc       /-----------  -------------  ------- ---/
 MyCR                fcb       C$CR
 UndlnL              equ       *-Undln
+AHeader             fcc       /Device Desc  Driver   File     Link/
+                    fcb       C$CR
+AHeaderL            equ       *-AHeader
+AHeader2            fcc       /Name   Port  Name     Manager  Cnt/
+                    fcb       C$CR
+AHeader2L           equ       *-AHeader2
+AUndln              fcc       /-----------  -------- -------  ----/
+                    fcb       C$CR
+AUndlnL             equ       *-AUndln
+NAHeader            fcc       /Dv Desc  Drvr   File   Lnk/
+                    fcb       C$CR
+NAHeaderL           equ       *-NAHeader
+NAHeader2           fcc       /Nm Port  Name   Mgr    Cnt/
+                    fcb       C$CR
+NAHeader2L          equ       *-NAHeader2
+NAUndln             fcc       /-------  ------ ------ ---/
+                    fcb       C$CR
+NAUndlnL            equ       *-NAUndln
 Init                fcs       /Init/
 
 start               ldd       ,x                  get parameter bytes
                     cmpd      #$2D3F              -?
                     lbeq      Help
-                    lda       #MaxEnts            get maximum entries we support
+                    clr       <allflag            assume the device table only
+                    andb      #$DF                make the option letter upper case
+                    cmpd      #$2D41              -a?
+                    bne       noall               branch if not
+                    inc       <allflag            else list every descriptor too
+noall               lda       #MaxEnts            get maximum entries we support
                     sta       <devcount           and save as count
                     leax      Init,pcr
                     clra
@@ -193,7 +226,7 @@ branch3             os9       I$WritLn
 
 L0155               bsr       L0165
                     dec       <counter
-                    lbeq      ClnExit             if done them all, exit
+                    lbeq      Done                if done them all, finish up
 
                     ldx       <curdte             get current pointer
                     leax      DEVSIZ,x            go to the next one
@@ -289,6 +322,11 @@ branch6             bsr       Str2Buf             dump out bytes of the file man
                     leax      -1,x
                     bra       L01E8
 
+Done                tst       <allflag            list every descriptor too?
+                    lbeq      ClnExit             branch if not
+                    lbsr      ListAll             else list them
+                    lbra      ClnExit
+
 PrintBuf            ldx       <outptr
 L01E8               lda       #C$CR               save a CR in memory
                     sta       ,x
@@ -351,6 +389,155 @@ Put2Buf             pshs      x                   save X
                     stx       <outptr             save new outptr
                     puls      pc,x                and return
 
+* ListAll - list every device descriptor module in the module directory,
+* attached or not, with its link count (nonzero while it is in use)
+ListAll             ldu       <memstrt            get static pointer
+                    lda       #$01                to standard output
+                    leax      >MyCR,pcr           separate it from the device table
+                    ldy       #$0001
+                    os9       I$WritLn
+                    lbcs      Exit
+                    leax      >AHeader,pcr
+                    ldy       #AHeaderL
+                    tst       <narrow
+                    beq       abranch1
+                    leax      >NAHeader,pcr
+                    ldy       #NAHeaderL
+abranch1            os9       I$WritLn
+                    lbcs      Exit
+                    leax      >AHeader2,pcr
+                    ldy       #AHeader2L
+                    tst       <narrow
+                    beq       abranch2
+                    leax      >NAHeader2,pcr
+                    ldy       #NAHeader2L
+abranch2            os9       I$WritLn
+                    lbcs      Exit
+                    leax      >AUndln,pcr
+                    ldy       #AUndlnL
+                    tst       <narrow
+                    beq       abranch3
+                    leax      >NAUndln,pcr
+                    ldy       #NAUndlnL
+abranch3            os9       I$WritLn
+                    lbcs      Exit
+
+                    ifgt      Level-1
+                    leax      >mdbuf,u            copy the module directory here
+                    pshs      u
+                    os9       F$GModDr
+                    sty       <mdend              end of the local copy
+                    stu       <mdsys              where it lives in the system map
+                    puls      u
+                    leax      >mdbuf,u
+                    else
+                    ldx       >D.ModDir           start of the module directory
+                    ldd       >D.ModDir+2         and its end
+                    std       <mdend
+                    endc
+                    stx       <mdcur
+ALoop               ldx       <mdcur              get the current entry
+                    cmpx      <mdend              past the end?
+                    bhs       AExit               yes, done
+                    ifgt      Level-1
+                    ldd       MD$MPDAT,x          module's DAT image
+                    beq       ANext               skip an unused slot
+                    subd      <mdsys              offset into the module directory
+                    leay      >mdbuf,u            to the same place in our copy
+                    leay      d,y
+                    sty       <datptr
+                    ldd       MD$MPtr,x           module address within that image
+                    std       <modptr
+                    ldy       #M$Port+3           just the header first
+                    bsr       CopyMod
+                    bcs       ANext               unreadable: skip it
+                    leax      >descrip,u
+                    lda       M$Type,x            module type
+                    anda      #TypeMask
+                    cmpa      #Devic              a device descriptor?
+                    bne       ANext               no, skip it
+                    ldd       M$Size,x            now the whole module
+                    cmpd      #256                bigger than our buffer?
+                    bls       ASize               no
+                    ldd       #256                else take what fits
+ASize               tfr       d,y
+                    bsr       CopyMod
+                    bcs       ANext
+                    ldx       <mdcur
+                    ldb       MD$Link+1,x         link count (low byte of the word)
+                    leax      >descrip,u          the descriptor copy
+                    else
+                    ldy       MD$MPtr,x           module address
+                    beq       ANext               skip an unused slot
+                    lda       M$Type,y            module type
+                    anda      #TypeMask
+                    cmpa      #Devic              a device descriptor?
+                    bne       ANext               no, skip it
+                    ldb       MD$Link,x           link count (one byte at level one)
+                    tfr       y,x                 the descriptor itself
+                    endc
+                    bsr       PrtDesc
+ANext               ldx       <mdcur
+                    leax      MD$ESize,x          next entry
+                    stx       <mdcur
+                    bra       ALoop
+AExit               rts
+
+                    ifgt      Level-1
+* CopyMod - copy Y bytes of the current module into descrip
+CopyMod             ldd       <datptr             module's DAT image
+                    ldx       <modptr             module address within it
+                    pshs      u
+                    leau      >descrip,u
+                    os9       F$CpyMem
+                    puls      u,pc
+                    endc
+
+* PrtDesc - print one descriptor line
+* Entry: X = descriptor, B = link count
+PrtDesc             pshs      b                   save the link count
+                    stx       <descptr
+                    leay      <lnbuff,u           point to line buffer
+                    sty       <outptr
+                    ldd       M$Name,x            pointer to the name
+                    leax      d,x
+                    lda       #5                  assume this size
+                    tst       <narrow
+                    beq       pbranch1
+                    lda       #3
+pbranch1            lbsr      Str2Buf             the name
+                    ldx       <descptr
+                    tst       <narrow
+                    bne       pskip1
+                    lda       M$Port,x            port address of the device
+                    lbsr      HexByte
+                    ldy       <outptr
+                    leay      -1,y
+                    sty       <outptr
+pskip1              ldd       M$Port+1,x
+                    lbsr      HexWord
+                    lbsr      Space
+                    ldd       M$PDev,x            device driver name offset
+                    leax      d,x
+                    lda       #9
+                    tst       <narrow
+                    beq       pbranch2
+                    lda       #7
+pbranch2            lbsr      Str2Buf             the driver name
+                    ldx       <descptr
+                    ldd       M$FMGr,x            file manager name offset
+                    leax      d,x
+                    lda       #9
+                    tst       <narrow
+                    beq       pbranch3
+                    lda       #7
+pbranch3            lbsr      Str2Buf             the file manager name
+                    puls      a                   link count
+                    lbsr      HexByte
+                    ldx       <outptr
+                    leax      -1,x
+                    lbra      L01E8
+
 Help                lda       #1                  to STDOUT
                     leax      HMsg,pcr
                     ldy       #HLen
@@ -359,6 +546,8 @@ Help                lda       #1                  to STDOUT
                     os9       F$Exit
 
 HMsg                fcc       /devs: show devices in device table/
+                    fdb       C$CR,C$LF
+                    fcc       /  -a  also list every device descriptor in memory/
                     fdb       C$CR,C$LF
 HLen                equ       *-HMsg
 

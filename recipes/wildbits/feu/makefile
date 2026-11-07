@@ -107,7 +107,9 @@ f0.zip: f0.dsk
 	echo "3a,f0_2" >> bulk_f0.csv
 	echo "3b,f0_3" >> bulk_f0.csv
 	echo "3c,f0_4" >> bulk_f0.csv
-	zip $@ bulk_f0.csv f0_0 f0_1 f0_2 f0_3 f0_4
+	$(SET_BUILD_TIME) bulk_f0.csv f0_0 f0_1 f0_2 f0_3 f0_4
+	$(RM) $@
+	zip $(ZIPFLAGS) $@ bulk_f0.csv f0_0 f0_1 f0_2 f0_3 f0_4
 
 booter.zip: booter
 	-rm booter_? bulk_booter.csv
@@ -120,7 +122,9 @@ booter.zip: booter
 	-rm -rf mapfiles
 	mkdir mapfiles
 	os9 ident -s $^ > mapfiles/bootlist
-	zip $@ bulk_booter.csv booter_0 booter_1 booter_2 mapfiles/*
+	$(SET_BUILD_TIME) bulk_booter.csv booter_0 booter_1 booter_2 mapfiles/*
+	$(RM) $@
+	zip $(ZIPFLAGS) $@ bulk_booter.csv booter_0 booter_1 booter_2 mapfiles/*
 	-rm -rf mapfiles
 
 FEU_FILES = $(foreach file,$(NITROS9DIR)/level1/$(PORT)/feu/feu/*,$(file))
@@ -134,13 +138,16 @@ f0.dsk: startup $(addprefix $(MODDIR)/,$(F0_CMDS))
 	$(OS9COPY) -l startup $@,FEU
 	$(foreach file,$(FEU_FILES),$(OS9COPY) -l $(file) $@,FEU)
 
-startup:
-	echo "display 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0 1b 32 7" > $@
-	echo "echo FEU - First Execution Unit" >> $@
-	echo "echo Build date:" `date` >> $@
-	echo "wbinfo" >> $@
-	echo "chd .../feu" >> $@
-	echo "pick -pFEU: main.pick</1" >> $@
+startup: FORCE
+	@BUILDDATE="$$( $(BUILD_DATE))" || exit 1; \
+	{ \
+		echo "display 1b 61 1 ff 0 0 ff 5 22 f0 1b 20 2 0 0 50 18 0 1 0 1b 32 7"; \
+		echo "echo FEU - First Execution Unit"; \
+		echo "echo Build date: $$BUILDDATE"; \
+		echo "wbinfo"; \
+		echo "chd .../feu"; \
+		echo "pick -pFEU: main.pick</1"; \
+	} > $@
 
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS))
 	$(RM) $@
@@ -329,4 +336,6 @@ help:
 	@echo "  make flash_f0 PLATFORM=jr2: flash /f0 for Jr2"
 	@echo "  make flash_f0 PLATFORM=k2: flash /f0 for K2"
 
-.PHONY: all clean flash flash_booter flash_f0 libs
+FORCE:
+
+.PHONY: all clean flash flash_booter flash_f0 libs FORCE

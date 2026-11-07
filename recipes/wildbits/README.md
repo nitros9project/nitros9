@@ -171,7 +171,9 @@ FEU disk image name pattern:
 
 ## Notes
 
-- `startup` in FEU includes a build date line when generated.
+- `startup` in FEU uses `SOURCE_DATE_EPOCH` for its build date when set;
+  otherwise it uses the current date. FEU zip packages also use the epoch
+  for their member timestamps.
 - Incremental builds are enabled by dependency tracking in makefiles.
 
 ## Troubleshooting

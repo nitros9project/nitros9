@@ -56,12 +56,15 @@ CLOCK = clock clock2_wildbits
 # NOTE!!!
 # VTIO must be near the top of the bootlist so that it can safely map
 # the text and CLUT blocks into $E000-$FFFF.
+# Level 2 always has the pipes (basic09-l2's editor and runtime talk over
+# them); a recipe that also lists them in BOOTMODS_EXTRA gets them once.
 ifeq ($(LEVEL),2)
 BOOTMODS = krnp2 ioman init \
 	$(SCF) \
 	$(RBF) \
 	$(CLOCK) \
-	$(BOOTMODS_EXTRA) \
+	$(PIPE) \
+	$(filter-out $(PIPE),$(BOOTMODS_EXTRA)) \
 	krn
 else
 BOOTMODS = krn krnp2 ioman init \
@@ -159,6 +162,19 @@ BASIC09_FILES = $(wildcard $(LANGUAGES)/basic09/samples/*)
 BASIC09_BIN = $(LANGUAGES)/basic09/basic09_wildbits
 RUNB_BIN = $(LANGUAGES)/basic09/runb_6809
 RUNB_SHA256 = 20ff5a997ec0e55f6aec1e37d92be49062d6c35a66e4b5404d9e680fc0783bbb
+ifeq ($(LEVEL),2)
+# basic09-l2 (nitros9-languages wildbits/basic09-l2): the editor, its runtime,
+# compiler and overlay, the help browser and farmem; the help file goes in SYS
+# and the examples in BASIC09. Its runb-l2 runs every module stock RunB runs,
+# plus FAR arrays, so it is the Level 2 runb.
+BASIC09_L2_DIR = $(LANGUAGES)/wildbits/basic09-l2
+BASIC09_L2 = basic09-l2 l2b09run l2b09cc l2b09ovl l2b09help farmem
+BASIC09_L2_HLP = $(BASIC09_L2_DIR)/basic09-l2.hlp
+BASIC09_L2_FILES = $(wildcard $(BASIC09_L2_DIR)/examples/*.b09)
+CMDS += $(BASIC09_L2)
+RUNB_BIN = $(BASIC09_L2_DIR)/runb-l2
+RUNB_SHA256 = 6924770005ae92c24a27602d1e3cf146c94b2a3d4c98b7c2e1e8225e4db33d40
+endif
 STARTUP = $(LEVEL2)/wildbits/startup
 WIZFITOOL = $(LEVEL2)/wildbits/cmds/wizfitool.b09
 FEU_STARTUP = feu.startup
@@ -239,7 +255,7 @@ wildbits-sys-assets:
 	$(MAKE) -C $(BACKGROUND_DIR) -f $(NITROS9DIR)/recipes/support/wildbits-backgrounds.mak
 
 $(FEU_STARTUP): FORCE
-	echo "bootos9 /s0/OS9Boot" >> $@
+	echo "bootos9 /s0/OS9Boot" > $@
 
 FORCE: ;
 
@@ -268,7 +284,7 @@ ifeq ($(LEVEL),2)
 endif
 
 ifeq ($(LEVEL),2)
-$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL)
+$(DSKIMAGE): bootfile $(MODDIR)/sysgo $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS) $(WIZFITOOL) $(BASIC09_L2_HLP)
 else
 $(DSKIMAGE): bootfile $(addprefix $(MODDIR)/,$(CMDS)) $(addprefix $(MODDIR)/,$(TESTS_BIN)) $(STARTUP) $(FEU_STARTUP) wildbits-sys-assets $(RECIPE_DEPS)
 endif
@@ -290,6 +306,7 @@ endif
 ifeq ($(LEVEL),2)
 	$(CPL) $(WIZFITOOL) $@,CMDS/wizfitool.b09
 	$(OS9ATTR_TEXT) $@,CMDS/wizfitool.b09
+	$(OS9COPY) $(BASIC09_L2_HLP) $@,SYS
 endif
 	$(CPL) $(SYS_TEXT_FILES) $@,SYS
 	$(OS9ATTR_TEXT) $(foreach file,$(notdir $(SYS_TEXT_FILES)),$@,SYS/$(file))
@@ -305,6 +322,9 @@ endif
 	$(OS9ATTR_TEXT) $@,startup
 	$(MAKDIR) $@,BASIC09
 	$(CPL) $(BASIC09_FILES) $@,BASIC09
+ifeq ($(LEVEL),2)
+	$(CPL) $(BASIC09_L2_FILES) $@,BASIC09
+endif
 	$(MAKDIR) $@,SCRIPTS
 	$(foreach file,$(SCRIPTS),$(CPL) $(SCRIPTS_DIR)/$(file) $@,SCRIPTS;)
 	$(MAKDIR) $@,TESTS
@@ -386,7 +406,15 @@ $(MODDIR)/runb: $(RUNB_BIN) | $(MODDIR)
 	@printf '%s  %s\n' "$(RUNB_SHA256)" $@ | shasum -a 256 -c -
 
 $(RUNB_BIN):
-	$(MAKE) -C $(LANGUAGES)/basic09 runb_6809
+	$(MAKE) -C $(dir $@) $(notdir $@)
+
+ifeq ($(LEVEL),2)
+$(addprefix $(MODDIR)/,$(BASIC09_L2)): $(MODDIR)/%: $(BASIC09_L2_DIR)/% | $(MODDIR)
+	$(CP) $< $@
+
+$(addprefix $(BASIC09_L2_DIR)/,$(BASIC09_L2)) $(BASIC09_L2_HLP):
+	$(MAKE) -C $(BASIC09_L2_DIR) $(notdir $@)
+endif
 
 ifeq ($(LEVEL),2)
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
@@ -564,4 +592,4 @@ clean:
 	$(RM) *.list *.map bootfile *.dsk buildinfo feu.startup $(CLEAN_EXTRA)
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
-.PHONY: all clean libs
+.PHONY: all clean libs FORCE
