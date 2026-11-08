@@ -161,6 +161,11 @@ def tests(binary,s,level):
     for n,mode,payload in [(59,0x82,record),(60,0x81,record),(60,0x82,b'..'+bytes(28)+b'new'+bytes(27))]:
         p=peer();p.m.write_byte(PD+s['PD.MOD'],mode)
         assert p.run('setstt',n,s['SS.Rename'],data=payload)[0]==1 and not p.tx
+    for offset in (0,30):
+        for bad in (b'x'*30, b'a\0x'+bytes(27), bytes([0x80])+bytes(29)):
+            packet=bytearray(record);packet[offset:offset+30]=bad
+            p=peer();p.m.write_byte(PD+s['PD.MOD'],0x82)
+            assert p.run('setstt',60,s['SS.Rename'],data=bytes(packet))[:2]==(1,s['E$BPNam']) and not p.tx
     if level==2:
         p=peer();p.fail_move=True;p.m.write_byte(PD+s['PD.MOD'],0x82)
         assert p.run('setstt',60,s['SS.Rename'],data=record)[0]==1 and not p.tx

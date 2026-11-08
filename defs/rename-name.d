@@ -1,82 +1,66 @@
 * Shared executable basename validator for SS.Rename.
-* Validate one zero-padded 30-byte basename. X advances by 30; B=length.
-RNName              pshs      x,y
-                    leay      30,x
-                    pshs      y
-                    clrb
+* X advances over a zero-padded 30-byte field. B=0 on success; Y is untouched.
+* RBF converts the staged name to directory-entry form after validation.
+RNName              ldd       ,x
+                    cmpd      #$2E00             reject dot
+                    beq       RNBad
+                    cmpd      #$2E2E
+                    bne       RNStart
+                    tst       2,x                 reject dot-dot, allow longer names
+                    beq       RNBad
+RNStart             ldb       #30
 RNChar              lda       ,x+
                     beq       RNPad
-                    cmpb      #29
+                    decb
+                    beq       RNBad               reserve a byte for the terminator
+                    suba      #$21
+                    cmpa      #$5E                printable ASCII, excluding space
                     bhs       RNBad
-                    cmpa      #$21
-                    blo       RNBad
-                    cmpa      #$7F
-                    bhs       RNBad
-                    cmpa      #'/
+                    cmpa      #$0E                slash minus $21
                     beq       RNBad
-                    cmpa      #$5C
+                    cmpa      #$3B                backslash minus $21
                     beq       RNBad
-                    cmpa      #':
+                    cmpa      #$19                colon minus $21
                     beq       RNBad
-                    incb
                     bra       RNChar
-RNPad               tstb
-                    beq       RNBad
-                    ldx       2,s
-                    lda       ,x
-                    cmpa      #'.
-                    bne       RNPadStart
-                    cmpb      #1
-                    beq       RNBad
-                    cmpb      #2
-                    bne       RNPadStart
-                    lda       1,x
-                    cmpa      #'.
-                    beq       RNBad
-RNPadStart          abx
-RNPadLoop           lda       ,x+
+RNPad               cmpb      #30
+                    beq       RNBad               empty basename
+                    ifdef     RN.RBF
+                    lda       -2,x
+                    ora       #$80
+                    sta       -2,x
+                    endc
+RNPadLoop           decb
+                    beq       RNValid
+                    lda       ,x+
                     bne       RNBad
-                    cmpx      ,s
-                    blo       RNPadLoop
-                    leas      4,s
-                    puls      y
-                    andcc     #$FE
+                    bra       RNPadLoop
+RNValid             clrb
                     rts
-RNBad               leas      2,s
-                    puls      x,y
-                    ldb       #E$BPNam
+RNBad               ldb       #E$BPNam
                     orcc      #1
                     rts
 
-* Compare X=plain name, B=length, Y=high-bit-terminated directory entry.
-* Carry clear on match; preserve pointers and count.
-RNCompare           pshs      x,y,b
-RNCmpNext           lda       ,y+
-                    pshs      a
-                    anda      #$7F
-                    bsr       RNUpper
-                    pshs      a
-                    lda       ,x+
-                    bsr       RNUpper
-                    cmpa      ,s+
-                    bne       RNCmpBadStack
-                    decb
-                    puls      a
-                    tsta
-                    bmi       RNCmpLast
-                    tstb
-                    bne       RNCmpNext
-RNCmpNo             orcc      #1
-                    puls      x,y,b,pc
-RNCmpBadStack       leas      1,s
-                    bra       RNCmpNo
-RNCmpLast           tstb
+                    ifdef     RN.RBF
+* Compare staged and on-disk high-bit-terminated names. Only ASCII letters
+* fold case: punctuation such as @ and ` must remain distinct.
+* X=directory entry, U=staged name. Preserve both pointers and PD in Y.
+RNCompare           pshs      x,u
+RNCmpNext           lda       ,u+
+                    eora      ,x+
+                    beq       RNCmpSame
+                    cmpa      #$20
                     bne       RNCmpNo
+                    lda       -1,u
+                    anda      #$7F
+                    ora       #$20
+                    suba      #'a
+                    cmpa      #25
+                    bhi       RNCmpNo
+RNCmpSame           tst       -1,u
+                    bpl       RNCmpNext
                     andcc     #$FE
-                    puls      x,y,b,pc
-RNUpper             cmpa      #'a
-                    blo       RNUpperDone
-                    cmpa      #'z
-                    bhi       RNUpperDone
-                    anda      #$DF
-RNUpperDone         rts
+                    puls      x,u,pc
+RNCmpNo             orcc      #1
+                    puls      x,u,pc
+                    endc
