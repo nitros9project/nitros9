@@ -3509,7 +3509,11 @@ L18DB               leax      >u0124,u            Point to PD.OPT work copy area
                     ldd       <$10,x              Get PD.INT & PD.QUT chars (<CTRL>-<C> & <E>)
                     sta       >u180F,u            Save copy of PD.INT
                     stb       >u180E,u            Save copy of PD.QUT
+                    ifne      picothing
+                    ldd       #$8D8C              Reload with the Pico-Thing's down & up arrows
+                    else
                     ldd       #$0A0C              Reload with up & down arrows
+                    endc
                     std       <$10,x              Save 'em
                     lda       $06,x               Get PD.NUL count (normally 0)
                     sta       >u1811,u            Save copy
