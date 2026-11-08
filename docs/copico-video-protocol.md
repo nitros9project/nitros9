@@ -311,9 +311,10 @@ modes, blits, etc.) without breaking GFX2. Each is framed with **zero**
 parameters today; giving one parameters is additive, since no existing count
 moves.
 
-`1B 28  1B 37  1B 38  1B 3B  1B 3E  1B 4C  1B 4D  1B 55`
+`1B 28  1B 3B  1B 3E  1B 4C  1B 4D  1B 55`
 
-(`1B 26` was on this list; it is now `DWShow`. `1B 27` is now `Tone`.)
+(`1B 26` was on this list; it is now `DWShow`. `1B 27` is now `Tone`, and
+`1B 37`/`1B 38` are save/restore cursor, below.)
 Allocate new commands from the low end, `1B 28` next.
 
 ## Sound
@@ -375,6 +376,48 @@ bottom row, and work on a window that is not on screen. Underline and blink are
 ignored because the text cell's attribute byte had one free bit, now used by
 inverse; a second attribute plane would cost 3,840 bytes of SRAM the device
 build does not have.
+
+**Terminal queries: `1B 5B` (CSI, ANSI/VT100).** A guest on a serial console
+(`sc6850`, `/term`) has no register window, so `SS.ScSiz` can only report the
+descriptor's `IT.COL`/`IT.ROW`. To learn the real size it asks the terminal, as
+xterm's `resize` does, and the console answers the same queries a VT100-class
+terminal would. `5B` (`[`) is outside the `$20`–`$55` sub-code range, so it
+cannot collide with the CoCo3 set.
+
+`1B 5B` starts a control sequence in the ECMA-48 shape: parameter bytes
+`30`–`3F` (digits, `;`), then intermediate bytes `20`–`2F`, then one final byte
+`40`–`7E`. The whole sequence is consumed and nothing is printed. A byte below
+`20` or above `7E` ends the sequence early and is then acted on as usual, so a
+`1B` inside one starts a new escape. Parameters are decimal; an omitted or
+zero parameter means the default, values above 9999 read as 9999, and
+parameters after the fourth are consumed and ignored.
+
+| Sequence | Action |
+|----------|--------|
+| `1B [` *row* `;` *col* `H` (or `f`) | Move the cursor to *row*, *col*: 1-based, within the current window's working area, defaulting to 1, clamped to the area |
+| `1B [ 6 n` | Reply `1B [` *row* `;` *col* `R`: the cursor, 1-based, in the same terms |
+| `1B [ 18 t` | Reply `1B [ 8 ;` *rows* `;` *cols* `t`: the working area's size, the text rows and columns `VID.Info` reports |
+| anything else | Consumed and ignored, including private sequences (`1B [ ?` ...) and ones with intermediate bytes |
+
+"The current window" is the `Select` target, as for all text. A reply is
+queued in the input FIFO and read like keystrokes, after anything already
+typed; it is queued whole or not at all, so a guest never sees half a reply.
+The query that works on any VT100-class terminal is
+
+`1B 37  1B [ 999;999 H  1B [ 6 n  1B 38`  →  `1B [` *rows* `;` *cols* `R`
+
+and the direct one, which xterm, VTE, iTerm2 and Windows Terminal answer but
+minicom and older emulators do not, is `1B [ 18 t`. The same queries work
+unchanged through a foreign terminal, which answers them itself.
+
+**Save and restore the cursor: `1B 37` / `1B 38`** (`ESC 7` / `ESC 8`, DECSC
+and DECRC; no parameters). `1B 37` saves the cursor position in the current
+window and `1B 38` moves the cursor back to it, so the portable query above
+leaves the cursor where it was. Each window has its own saved position, so a
+save in one window is not disturbed by another window's. Only the position is
+saved, not inverse video. A restore is clamped to the working area if `CWArea`
+has narrowed it since the save, and before any save, or after the window is
+(re)defined by `DWSet`, a restore homes the cursor.
 
 ---
 
