@@ -95,6 +95,16 @@ def tests(binary,s,level):
     assert p.run(record('far','newfar'))==0 and p.disk[-32:]==entry('newfar',90)
     for old,new,error in [('old','taken','E$CEF'),('absent','new','E$PNNF'),('.','new','E$BPNam'),('old','..','E$BPNam'),('old','a/b','E$BPNam'),('old','','E$BPNam')]:
         p=RBF(binary,s,level);before=bytes(p.disk);assert p.run(record(old,new))==s[error],(old,new);assert bytes(p.disk)==before and p.writes==0
+    # Fixed-field boundaries and padding must remain strict after compaction.
+    for offset in (0,30):
+        for bad in (b'x'*30, b'a\0'+b'x'+bytes(27), bytes([0x80])+bytes(29), b'a/b'+bytes(27), b'a:b'+bytes(27), b'a\\b'+bytes(27)):
+            packet=bytearray(record('old','new'));packet[offset:offset+30]=bad
+            p=RBF(binary,s,level);before=bytes(p.disk)
+            assert p.run(bytes(packet))==s['E$BPNam'] and p.writes==0
+            assert bytes(p.disk)==before and p.get(DATA,60)==packet
+    for name in ('x', 'x'*28, 'x'*29, '..x', 'x..', 'a@', 'a`'):
+        p=RBF(binary,s,level);p.disk[64:96]=entry(name,20)
+        assert p.run(record(name,'NEW'))==0 and p.disk[64:96]==entry('NEW',20)
     for attrs,owner,user,want in [(0x80,1,1,'E$FNA'),(0x82,2,1,'E$FNA'),(0x90,2,1,None),(0x82,1,1,None)]:
         p=RBF(binary,s,level,attrs,owner,user);assert p.run()==(0 if want is None else s[want])
     for flag,error in [('fail_read','E$Read'),('fail_write','E$Write')]+([('fail_move','E$IBA'),('fail_lock','E$Lock')] if level==2 else []):
