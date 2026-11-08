@@ -1456,6 +1456,8 @@ L097F               pshs      u,x,b
                     endc
 
 * Check the character that follows a name in a pathlist
+* A shell hands over the rest of its command line, so the characters that
+* separate shell commands and redirections end a pathlist too
 * Entry: A = the character after the name
 * Exit:  Carry clear if it is a slash or ends the pathlist (B is kept)
 *        Carry set and B = E$BPNam if it is any other character
@@ -1467,19 +1469,25 @@ ChkDvEnd            pshs      a                   save the character
 ChkEnd              tsta                          did the name end on its own last character?
                     bmi       ChkEndOK            yes, nothing follows the name
                     beq       ChkEndOK            a NUL ends the pathlist
-                    cmpa      #PDELIM             is it a slash?
-                    beq       ChkEndOK            yes, another name follows
-                    cmpa      #C$CR               is it a carriage return?
-                    beq       ChkEndOK            yes, it ends the pathlist
-                    cmpa      #C$SPAC             is it a space?
-                    beq       ChkEndOK            yes, it ends the pathlist
-                    cmpa      #',                 is it a comma?
-                    beq       ChkEndOK            yes, it ends the pathlist
+                    pshs      b,x                 save the length and the pathlist pointer
+                    leax      <ChkEndTb,pcr       point to the characters that may follow a name
+                    ldb       #ChkEndSz           get how many there are
+ChkEndLp            cmpa      ,x+                 is it this one?
+                    beq       ChkEndYs            yes, the name is legal
+                    decb                          count it
+                    bne       ChkEndLp            and try the next one
+                    puls      b,x                 restore the length and the pathlist pointer
                     comb                          set the carry to indicate an error
                     ldb       #E$BPNam            the name ends on an illegal character
                     rts                           return the error
+ChkEndYs            puls      b,x                 restore the length and the pathlist pointer
 ChkEndOK            andcc     #^Carry             clear the carry to indicate success
                     rts                           return with the length still in B
+
+* The characters that may follow a name: a slash starts another name, and
+* the rest end the pathlist
+ChkEndTb            fcb       PDELIM,C$CR,C$SPAC,',,';,'&,'!,'|,'<,'>,'#,'^,'(,')
+ChkEndSz            equ       *-ChkEndTb          the number of characters in the table
 
 GtDvcNam            os9       F$PrsNam            parse the filename
                     pshs      x                   preserve pointer to name
