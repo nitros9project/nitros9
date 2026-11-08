@@ -119,6 +119,18 @@ Stack               rmb       48
 inbuff              rmb       256
 i.o.buff            rmb       320
 size                equ       .
+                    ifne      picothing
+* the Pico-Thing keyboard sends its own codes for the arrow keys
+K$Up                equ       $8C                 up arrow
+K$Down              equ       $8D                 down arrow
+K$Left              equ       $8E                 left arrow
+K$Right             equ       $8F                 right arrow
+                    else
+K$Up                equ       $0C                 up arrow
+K$Down              equ       $0A                 down arrow
+K$Left              equ       $08                 left arrow
+K$Right             equ       $09                 right arrow
+                    endc
 cls                 fcb       $0C                 clear screen
 revvid              fcb       $1F,$20,0           reverse video on
 normvid             fcb       $1F,$21,0           reverse video off
@@ -228,9 +240,9 @@ decimals            fcb       $98,$96,$80         decimal 10,000,000
                     fcb       $00,$00,$0A         decimal         10
                     fcb       $00,$00,$01         decimal          1
 * Command jump table
-commands            fcb       $0C                 up arrow
+commands            fcb       K$Up                up arrow
                     fdb       nxtsec
-                    fcb       $0A                 down arrow
+                    fcb       K$Down              down arrow
                     fdb       prevsec
                     fcb       '*
                     fdb       restart             Restart program with new file/disk
@@ -402,6 +414,9 @@ getcmd              lbsr      movecmd             move cursor to
                     leax      >i.o.buff,u
                     lbsr      read1               read one char
                     lda       ,x
+                    ifne      picothing
+                    bmi       srchtabl            an arrow key is not a letter
+                    endc
                     cmpa      #'A                 is it ascii?
                     bcs       srchtabl            if not skip
                     ora       #$20                upper -> lower
@@ -1461,7 +1476,11 @@ digit               lda       ,x
                     bcs       notdig
 gotdig              andcc     #$FE
                     rts
-notdig              orcc      #1
+notdig
+                    ifne      picothing
+                    lda       ,x                  restore the key, which the upper-casing above changed
+                    endc
+                    orcc      #1
                     rts
 
 * Input single ASCII character
@@ -1473,19 +1492,26 @@ inputchr            lbsr      readit
                     lda       ,x
                     cmpa      #$20
                     bcs       edcurs
+                    ifne      picothing
+                    cmpa      #K$Up               below the arrow keys?
+                    blo       storechr            yes, store it
+                    cmpa      #K$Right            an arrow key?
+                    bls       edcurs              yes, move the cursor
+storechr
+                    endc
                     sta       [<edbufptr,u]
                     lda       #1
                     sta       <wrtflag
                     bra       movert
 
 * check if char is an arrow
-edcurs              cmpa      #9                  right arrow
+edcurs              cmpa      #K$Right            right arrow
                     beq       movert
-                    cmpa      #8                  left arrow
+                    cmpa      #K$Left             left arrow
                     beq       movelt
-                    cmpa      #$0C                up arrow
+                    cmpa      #K$Up               up arrow
                     lbeq      moveup
-                    cmpa      #$0A                down arrow
+                    cmpa      #K$Down             down arrow
                     lbeq      movedn
                     cmpa      #$0D                CR
                     lbne      edinput
