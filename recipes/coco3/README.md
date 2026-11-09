@@ -123,7 +123,9 @@ Primary output:
 In addition to the normal recipe prerequisites, this build needs `git`, CMOC,
 and the CMOC OS-9 runtime. By default it expects the usual coco-shelf layout:
 `bin/cmoc` and `cmoc_os9/` alongside the `nitros9/` checkout. Set
-`COCO_SHELF=/path/to/coco-shelf` if yours differs.
+`COCO_SHELF=/path/to/coco-shelf` if yours differs. Without a `bin/cmoc` there,
+it uses the `cmoc` on the `PATH`, or set `CMOC=/path/to/cmoc`. `cmoc_os9/` is
+still needed, with its `libc.a` built first: `make -C cmoc_os9/lib libc.a`.
 
 The mega recipe extends the existing [`dw/`](dw/) recipe and adds OS-9
 software and story files fetched from pinned upstream revisions:

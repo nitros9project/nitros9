@@ -18,6 +18,8 @@ CLEAN_EXTRA += .inetd.conf
 
 EXTERNAL_DIR ?= .external
 COCO_SHELF ?= $(abspath $(NITROS9DIR)/..)
+# The coco-shelf's cmoc if there is one, otherwise the one on the PATH.
+CMOC ?= $(firstword $(wildcard $(COCO_SHELF)/bin/cmoc) cmoc)
 
 INFOCOM_REPO ?= https://github.com/rlucente-retro/infocom-os9-port.git
 INFOCOM_REF ?= 8f3bc2b6f67a7897eb426783c52a6cf8cc6c729f
@@ -140,19 +142,19 @@ $(RAAKATU_STORY): $(RAAKATU_CHECKOUT)
 	@test -f $@
 
 $(FORTH09_CMD): $(FORTH09_CHECKOUT)
-	$(COCO_SHELF)/bin/cmoc --cpp="cpp -Wno-builtin-macro-redefined" \
+	$(CMOC) --cpp="cpp -Wno-builtin-macro-redefined" \
 		--os9 --add-os9-stack-space=16384 -D_strass=memcpy \
 		-I$(COCO_SHELF)/cmoc_os9/include --compile \
 		-o $(FORTH09_COCO_DIR)/main.o $(FORTH09_SRC)/main.c
-	$(COCO_SHELF)/bin/cmoc --cpp="cpp -Wno-builtin-macro-redefined" \
+	$(CMOC) --cpp="cpp -Wno-builtin-macro-redefined" \
 		--os9 --add-os9-stack-space=16384 -D_strass=memcpy \
 		-I$(COCO_SHELF)/cmoc_os9/include --compile \
 		-o $(FORTH09_COCO_DIR)/dictiona.o $(FORTH09_SRC)/dictiona.c
-	$(COCO_SHELF)/bin/cmoc --cpp="cpp -Wno-builtin-macro-redefined" \
+	$(CMOC) --cpp="cpp -Wno-builtin-macro-redefined" \
 		--os9 --add-os9-stack-space=16384 -D_strass=memcpy \
 		-I$(COCO_SHELF)/cmoc_os9/include --compile \
 		-o $(FORTH09_COCO_DIR)/basic_fu.o $(FORTH09_SRC)/basic_fu.c
-	$(COCO_SHELF)/bin/cmoc --cpp="cpp -Wno-builtin-macro-redefined" \
+	$(CMOC) --cpp="cpp -Wno-builtin-macro-redefined" \
 		--os9 --add-os9-stack-space=16384 -o $@ \
 		$(FORTH09_COCO_DIR)/main.o $(FORTH09_COCO_DIR)/dictiona.o \
 		$(FORTH09_COCO_DIR)/basic_fu.o -L$(COCO_SHELF)/cmoc_os9/lib -lc
