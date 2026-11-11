@@ -110,7 +110,31 @@ stdin               equ       0
 stdout              equ       1
 stderr              equ       2
 
-K$Shift             equ       $10
+                    ifne      picothing
+* the Pico-Thing keyboard sends its own codes for the cursor and editing keys
+K$Up                equ       $8c
+K$Down              equ       $8d
+K$Left              equ       $8e
+K$Right             equ       $8f
+
+K$ShiftUp           equ       $90
+K$ShiftDown         equ       $91
+K$ShiftLeft         equ       $92
+K$ShiftRight        equ       $93
+
+K$CtrlUp            equ       $94
+K$CtrlDown          equ       $95
+K$CtrlLeft          equ       $96
+K$CtrlRight         equ       $97
+
+K$Home              equ       $98
+K$End               equ       $99
+K$PgUp              equ       $9a
+K$PgDn              equ       $9b
+K$Pound             equ       $9c
+K$Del               equ       $9e
+K$BSp               equ       $08
+                    else
 K$Up                equ       $0c
 K$Down              equ       $0a
 K$Left              equ       $08
@@ -125,6 +149,7 @@ K$CtrlUp            equ       $13
 K$CtrlDown          equ       $12
 K$CtrlLeft          equ       $10
 K$CtrlRight         equ       $11
+                    endc
 
 K$CtrlK             equ       $0b
 K$CtrlD             equ       $04
@@ -1556,6 +1581,24 @@ _input
                     cmpb      #S$Abort
                     lbeq      @end
 _redo               lda       <key
+                    ifne      picothing
+                    cmpa      #K$Home
+                    bne       @endkey
+                    lbsr      _dohome
+                    lbra      @input
+@endkey             cmpa      #K$End
+                    bne       @pgup
+                    lbsr      _doend
+                    lbra      @input
+@pgup               cmpa      #K$PgUp
+                    bne       @pgdn
+                    lbsr      _pageup
+                    lbra      @input
+@pgdn               cmpa      #K$PgDn
+                    bne       @up
+                    lbsr      _pagedown
+                    lbra      @input
+                    endc
 @up
                     cmpa      #K$Up
                     bne       @down
@@ -1567,12 +1610,12 @@ _redo               lda       <key
                     lbsr      _down
                     lbra      @input
 @pageup
-                    cmpa      #K$Shift|K$Up
+                    cmpa      #K$ShiftUp
                     bne       @pagedown
                     lbsr      _pageup
                     lbra      @input
 @pagedown
-                    cmpa      #K$Shift|K$Down
+                    cmpa      #K$ShiftDown
                     bne       @right
                     lbsr      _pagedown
                     lbra      @input
@@ -1587,14 +1630,22 @@ _redo               lda       <key
                     lbsr      _left
                     lbra      @input
 @backspace
+                    ifne      picothing
+                    cmpa      #K$BSp
+                    beq       @dobsp
+                    endc
                     cmpa      #K$ShiftLeft
                     bne       @delete
-                    lbsr      _backspace
+@dobsp              lbsr      _backspace
                     lbra      @input
 @delete
+                    ifne      picothing
+                    cmpa      #K$Del
+                    beq       @dodel
+                    endc
                     cmpa      #K$ShiftRight
                     bne       @enter
-                    ldd       <cx
+@dodel              ldd       <cx
                     pshs      a,b
                     lbsr      _right
                     lbsr      _setpos
@@ -1609,6 +1660,15 @@ _redo               lda       <key
                     lbra      @input
 @char               cmpa      #$20
                     blo       @ctrl_r
+                    ifne      picothing
+                    cmpa      #$80                ; below the special keys?
+                    blo       @insert             ; yes, it is text
+                    cmpa      #$9f                ; above them?
+                    bhi       @insert             ; yes, it is text
+                    cmpa      #K$Pound            ; the pound sign is text too
+                    lbne      @input              ; any other special key does nothing
+@insert
+                    endc
                     lbsr      _inschar
                     lbra      @input
 @ctrl_r             cmpa      #K$CtrlR
