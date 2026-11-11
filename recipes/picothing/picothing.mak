@@ -307,8 +307,10 @@ $(MODDIR)/j7_pt.dd: ptidedesc.asm | $(MODDIR)
 # RAM disk (shared from the CoCo 3 tree)
 $(MODDIR)/rammer.dr: $(L2D)/coco3/modules/rammer.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+# /r0 is 512K (128 cylinders of 16 sectors) of the 2M, and startup formats
+# it, so it is ready as scratch space, e.g. for sort's temporary files.
 $(MODDIR)/r0.dd: $(L2D)/coco3/modules/r0.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $(ASOUT)$@ $<
+	$(AS) $(AFLAGS) -DRAMSize=128 -DRAMSct=16 $(ASOUT)$@ $<
 
 # Lean /Nil and /Zero pseudo-devices (NIL selects /Nil over the /Zero default)
 $(MODDIR)/nil.dr: nzdrv.asm | $(MODDIR)

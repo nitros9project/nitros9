@@ -1,5 +1,6 @@
 chx /dd/cmds
 load utilpak1
 iniz /r0
+format /r0 r "RAM disk"
 link shell
 tsmon /w1&
