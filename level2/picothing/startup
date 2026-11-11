@@ -1,4 +1,5 @@
 chx /dd/cmds
+load utilpak1
 iniz /r0
 link shell
 tsmon /w1&

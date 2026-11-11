@@ -64,12 +64,20 @@ place instead of calling `F$Boot`. Replacing `OS9Boot` with an ordinary
 REL works out the level from where it finds `Krn`, so one REL boots both:
 
 - **Level 2** `OS9Boot` holds `krnp2 krnp3_perr init ioman`, the driver
-  stack, `sysgo` and a merged shell, padded at the start so they end at
-  $E000, then a gap and `krn` at `Bt.Start` ($EC00). Nothing but `krn` may
-  sit in $E000-$FFFF: that is the fixed window, one page shared by every
-  task, and a program module there could not be mapped into a user task.
-  The base image also carries a `/Modules` directory (graphical console,
-  extra DriveWire descriptors).
+  stack and `sysgo`, padded at the start so they end at $E000, then a gap
+  and `krn` at `Bt.Start` ($EC00). Nothing but `krn` may sit in
+  $E000-$FFFF: that is the fixed window, one page shared by every task, and
+  a program module there could not be mapped into a user task. The base
+  image also carries a `/Modules` directory (graphical console, extra
+  DriveWire descriptors).
+  The shell is not in `OS9Boot`, as on the CoCo 3: SysGo sets the execution
+  directory to `/CMDS` and starts Shell from `/CMDS/shell`, the merged pack
+  of Shell+ with `echo`, `iniz`, `link`, `load`, `save` and `unlink`, which
+  fits in one 8K block. Linking a module maps every block of the file it
+  was loaded in, so from `OS9Boot` the shell and its utilities ran with the
+  whole bootfile mapped and one block of their address space free, and
+  `load` could not map in anything larger than 8K. `startup` also loads
+  `utilpak1`, sixteen common commands in one block, so they stay resident.
 - **Level 1** `OS9Boot` starts with `krn krnp2 init ioman sysgo`, and the
   standalone `shell_21` module is renamed to `shell` on the disk. Level 1
   links against `libcoco` rather than the level system library.
