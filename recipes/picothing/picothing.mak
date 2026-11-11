@@ -7,7 +7,7 @@
 # is no boot module, no F$Boot, no OS9Kernel file and no OS9Gen.  The two
 # levels compose OS9Boot differently:
 #
-#   Level 2  OS9Boot = krnp2 krnp3_perr init ioman + drivers + shell, padded
+#   Level 2  OS9Boot = krnp2 krnp3_perr init ioman + drivers + sysgo, padded
 #                      at the start so they end at $E000, then a gap to
 #                      Bt.Start and krn padded to Bt.End-Bt.Start
 #   Level 1  OS9Boot = krn krnp2 init ioman sysgo + drivers + shell
@@ -139,11 +139,16 @@ endif
 ifeq ($(LEVEL),2)
 CLOCK    = clock clock2_ds12885
 RAMDISK  = rammer.dr r0.dd
-SHELLBOOT = shell
-# OS9Boot: everything essential to reach the shell.  krnp3_perr installs
-# the full-text F$PErr; krnp2 runs it at boot.
+# OS9Boot: everything needed to start SysGo.  krnp3_perr installs the
+# full-text F$PErr; krnp2 runs it at boot.  The shell is not in it: SysGo
+# sets the execution directory to /dd/cmds and starts Shell from the merged
+# shell pack there (Shell+, Echo, Iniz, Link, Load, Save and Unlink, under
+# 8K).  Linking a module maps every block of the file it was loaded in, so
+# in OS9Boot the shell and its utilities ran with the whole bootfile mapped
+# and one block of the seven free, and Load could not map in anything over
+# 8K; from the pack they map one block.
 BOOTFILE = krnp2 krnp3_perr init ioman $(RBF_CORE) $(IDE_PARTS) $(SCF) \
-           $(WIN) $(CLOCK) $(PIPE) $(RAMDISK) $(DW) $(SYSGO) $(SHELLBOOT) \
+           $(WIN) $(CLOCK) $(PIPE) $(RAMDISK) $(DW) $(SYSGO) \
            $(BOOTMODS_EXTRA)
 else
 CLOCK    = clock clock2_ds12885
@@ -391,8 +396,8 @@ $(MODDIR)/pwd: pd.asm | $(MODDIR)
 $(MODDIR)/pxd: pd.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DPXD=1
 
-# Level 2 shell is a merged shellplus pack; Level 1 boots the standalone
-# shell_21 module (renamed to "shell" on disk).
+# Level 2 shell is a merged shellplus pack, started from /dd/cmds; Level 1
+# boots the standalone shell_21 module (renamed to "shell" on disk).
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
 $(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
