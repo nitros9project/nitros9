@@ -22,6 +22,9 @@ RAMSize             set       128
                     ifndef    SAS
 SAS                 set       4
                     endc
+                    ifndef    RAMSct
+RAMSct              set       4
+                    endc
 
                     mod       eom,name,tylg,atrv,mgrnam,drvnam
 
@@ -37,8 +40,8 @@ SAS                 set       4
                     fdb       RAMSize
                     fcb       $01                 number of sides
                     fcb       $01                 verify disk writes:0=on
-                    fdb       4                   # of sectors per track
-                    fdb       4                   # of sectors per track (track 0)
+                    fdb       RAMSct              # of sectors per track
+                    fdb       RAMSct              # of sectors per track (track 0)
                     fcb       $01                 sector interleave factor
                     fcb       SAS                 minimum size of sector allocation
 initsize            equ       *

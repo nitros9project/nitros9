@@ -78,6 +78,9 @@ REL works out the level from where it finds `Krn`, so one REL boots both:
   whole bootfile mapped and one block of their address space free, and
   `load` could not map in anything larger than 8K. `startup` also loads
   `utilpak1`, sixteen common commands in one block, so they stay resident.
+  `/r0` is a 512K RAM disk (128 cylinders of 16 sectors), which `startup`
+  formats, so it is ready as scratch space, for example for `sort`'s
+  temporary files.
 - **Level 1** `OS9Boot` starts with `krn krnp2 init ioman sysgo`, and the
   standalone `shell_21` module is renamed to `shell` on the disk. Level 1
   links against `libcoco` rather than the level system library.
