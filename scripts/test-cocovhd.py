@@ -11,6 +11,7 @@ PORT=0xff80
 
 class VHD:
     def __init__(self,p):
+        p.word(b.STAT+p.s['V.PORT'],PORT)
         self.p=p;self.reg=bytearray(7);self.status=255;self.reads=[];self.writes=[];self.storage={};self.fail=None;self.fail_on=None
         for address in range(PORT,PORT+7):p.m.add_write_byte_callback(self.write,address)
         p.m.add_read_byte_callback(lambda *_:self.status,PORT+3)
@@ -35,6 +36,11 @@ with tempfile.TemporaryDirectory(prefix='cocovhd-test-') as folder:
     for level in (1,2):
         modules=b.assemble(tmp,level)
         modules['llcocovhd']=f.assemble_source(tmp,level,f.ROOT/'level1/modules/llcocovhd.asm','llcocovhd')
+        descriptor, symbols = f.assemble_source(tmp, level, f.ROOT/'level1/modules/fatdesc.asm', 'fatdesc',
+            defines=('FATVHD=1', 'FATWrite=1', 'FATBase=2048', 'FATLength=0', 'FATPort=$FF80'))
+        last = symbols['BT.Config']+symbols['BC.Base']
+        assert int.from_bytes(descriptor[last:last+4], 'big') == 0x7fffff
+        assert int.from_bytes(descriptor[symbols['FT.Length']:symbols['FT.Length']+4], 'big') == 0
         for unit in (0,1):
             p=b.Machine(modules,backend='llcocovhd',base=0x7fffff,readonly=True)
             p.word(p.config+p.s['BC.Port'],PORT)
@@ -88,6 +94,7 @@ with tempfile.TemporaryDirectory(prefix='cocovhd-test-') as folder:
             p.ok('Flush');p.ok('Term');assert not p.allocations
         for port,unit,last in ((0xff90,0,100),(PORT,2,100),(PORT,0,0x800000)):
             p=b.Machine(modules,backend='llcocovhd',base=last)
+            p.word(b.STAT+p.s['V.PORT'],port)
             p.word(p.config+p.s['BC.Port'],port);p.byte(p.config+p.s['BC.Unit'],unit)
             assert p.run('Init')[:2]==(1,p.s['E$IllArg'])
             assert not p.allocations

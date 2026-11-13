@@ -19,8 +19,21 @@ including `.` and `..`. Their 24-bit FD cookies identify directory slots within
 an open directory, not disk addresses or cluster numbers. Raw RBF sector/FD
 editing utilities are not supported.
 
-Each system path allocates 2048 bytes, including separate data and FAT sector
-caches. Duplicated paths share this allocation until the final close. FAT chains
+LFN-backed aliases are read-only: they cannot be written, deleted, or renamed.
+Lookup checks the short-name checksum, so unrelated orphaned LFN slots do not
+prevent pcf from mutating its own short-name files. Creation compares only 8.3
+aliases; it does not compare the Unicode long names. Creating `FOO` beside a
+long name `Foo` whose short alias differs can therefore create names that a
+Windows client considers duplicates. Use pcf for short-name volumes and avoid
+mixing long-name creation by other systems with pcf mutations. OEM name bytes
+outside ASCII (including FAT's escaped leading `$E5`) display as `?`, because
+OS-9 uses bit seven as a name terminator; those names cannot be addressed by
+pcf's ASCII-only path parser.
+
+Each system path allocates 1792 bytes, including separate data and FAT sector
+caches. Duplicated paths share this allocation until the final close. This is
+system RAM, including on Level 2; several simultaneously open paths can still
+exhaust the CoCo 3 system map. The allocation is bounded, not dynamically paged. FAT chains
 are checked for invalid/reserved/free clusters, premature end and cycles.
 Geometry and address arithmetic are checked before access. Media must remain
 unchanged while paths are open; unmount before replacing a card.
@@ -260,7 +273,7 @@ configured FAT checker) runs after each boot.
 and RBF rename CPU tests and the command exit-status regression. `check-all`
 includes these checks. STARTUP chains into the chosen disk script with `ex shell`
 to release its process and script path before the recursive tests; each distinct
-pcf path otherwise consumes 2048 bytes of limited system memory.
+pcf path otherwise consumes 1792 bytes of limited system memory.
 
 ### Multi-process sharing checks
 
@@ -381,3 +394,31 @@ errors. The updated command requires SS.ReadDir support in the file manager.
 See [Running the PCF and RBF regressions](pcf-testing.md) for recipe `demo`,
 `demo-all`, `check-all`, and seeded `check-random` targets, dependencies, and
 the screenshots, replay traces, and host-reference results they save.
+
+## Mutation and resource limits
+
+Allocation resumes after the path's previous allocation, wraps once, and always
+checks the FAT itself. Appending preserves the cached chain cursor, avoiding a
+walk from the first cluster for every extension. Metadata and FSInfo updates
+remain synchronous; each written sector can still incur directory metadata I/O.
+FSInfo is advisory: invalid signatures/counts or hint I/O errors cannot make an
+otherwise successful allocation or reclamation fail. The FAT remains authoritative.
+
+Failed first-cluster publication and chain linking attempt to restore disk
+metadata before reclaiming unreachable allocations. Failed truncation restores
+its in-memory identity and attempts to repair a partial directory-sector write.
+A second media failure during rollback can still require filesystem repair;
+these operations are not power-loss transactions. Parent directory modification
+timestamps are not maintained by the current short-name implementation.
+
+Device operation contention returns `E$DevBsy`, without sleeping. This deliberate
+nonblocking policy requires callers to yield/retry and is suitable only while
+backends complete synchronously. A sleeping backend requires a wait/wakeup
+protocol before use with pcf. `SS.Lock` remains unsupported.
+
+The 464-byte VHD booter consumes its entire fixed slot. It assumes a consistent,
+prevalidated FAT32 volume and does not replace pcf's geometry/chain validation:
+it does not check the BPB signature, FAT type, FAT-count range, OS9BOOT attribute,
+reserved cluster numbers, or every address overflow. Do not boot untrusted or
+corrupt media through this loader. Validate generated media with `fsck_msdos -n`
+or `fsck.fat -n` before use. The writable integration also checks both boot images.

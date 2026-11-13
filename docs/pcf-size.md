@@ -1,12 +1,21 @@
 # pcf size audit
 
-Current modules: **6,691 bytes (Level 2)** and **6,682 bytes (Level 1)**,
-for both 6809 and 6309 builds. The latest pass saves **58 bytes** on each level.
-The four post-rename passes now save **625/623 bytes (about 8.5%)**, respectively.
-Per-path workspace remains **2,048 bytes**, with no removed features or checks.
+Current modules after review fixes: **7,059 bytes (Level 2)** and
+**7,050 bytes (Level 1)** for both CPUs. Correctness checks, publication rollback,
+checksum validation and circular allocation add **368 bytes** per level relative
+to the last size pass. Per-path workspace falls from **2,048 to 1,792 bytes**
+by removing the unused gap before the two sector buffers. All thirteen ABI
+slots remain three bytes.
 
-Compared with the measured **5,454-byte Level 2 RBF**, pcf is **1,237 bytes
-(22.7%) larger**, excluding drivers from both figures.
+Compared with the measured **5,454-byte Level 2 RBF**, pcf is **1,605 bytes
+(29.4%) larger**, excluding drivers. The section reporter identifies the new
+rollback/linking helpers separately. These figures supersede the historical
+measurements below; the old passes remain as an audit trail.
+
+Allocation now resumes after the path's preceding allocation and wraps once;
+appending preserves the cached chain cursor. FAT years now saturate at 2107
+rather than wrapping. Timestamp vector expectations reflect this deliberate
+review correction. Other timestamp defaults and half-second behavior remain.
 
 ## Timestamp packing, cluster encoding and position updates
 

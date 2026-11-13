@@ -27,6 +27,7 @@ SECTIONS = (
     ('Directory creation', 'MkDirImpl'),
     ('Directory removal and in-use checks', 'RemovableDirectory'),
     ('Same-directory rename and name validation', 'RenameEntry'),
+    ('Publication rollback and cluster linking', 'SaveIdentity'),
     ('Module CRC', '_crc'),
 )
 
@@ -42,6 +43,7 @@ def sizes(path):
     symbols.setdefault('MkDirImpl', symbols['_crc'])
     symbols.setdefault('RemovableDirectory', symbols['_crc'])
     symbols.setdefault('RenameEntry', symbols['_crc'])
+    symbols.setdefault('SaveIdentity', symbols['_crc'])
     starts = [symbols[n] if n else 0 for _, n in SECTIONS] + [symbols['eom']]
     assert starts == sorted(starts), 'section boundaries are out of order'
     return [b-a for a,b in zip(starts,starts[1:])]

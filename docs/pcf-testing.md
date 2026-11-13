@@ -136,3 +136,13 @@ its previous evidence, so copy it elsewhere before starting another seed if
 needed. A passing finite regression is not a proof for every input, concurrent
 schedule, media failure, or hardware configuration. Real Wildbits hardware and
 power-loss behavior still need separate validation.
+
+## Review failure regressions
+
+`LWASM=lwasm.orig python3 scripts/test-pcf-review.py` executes both OS levels
+against injected first/second-half FAT and directory write failures. It checks
+truncate identity restoration, subsequent writes on the same path, reclamation
+of failed first allocations and links, advisory FSInfo failures, execution-mode
+delete selection, WRITE-only directory changes, readonly `SS.Opt`, and orphaned
+LFN checksums. `test-readdir.py` and `test-deldir.py` also exercise legacy raw
+RBF fallback, including dot/free filtering and extended metadata.

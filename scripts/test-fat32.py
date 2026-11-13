@@ -19,11 +19,11 @@ blk.DRIVER, blk.BACKEND = 0x4000, 0x8000
 FAT, WORK, REGS, PATH, OUTPUT, DEVTAB = 0x2000, 0x6000, 0x1300, 0x4800, 0x4800, 0x1400
 
 
-def assemble_source(tmp, level, source, name):
+def assemble_source(tmp, level, source, name, defines=()):
     (tmp/'defsfile').write_text(f'Level equ {level}\n use os9.d\n use scf.d\n use rbf.d\n use wildbits.d\n')
     p = subprocess.run([os.environ.get('LWASM', 'lwasm'), '--6809', '--format=os9',
         '--pragma=pcaspcr,nosymbolcase,condundefzero,undefextern,dollarnotlocal,noforwardrefmax',
-        '-I'+str(tmp), '-I'+str(source.parent), '-I'+str(ROOT/'defs'), '-DH6309=0', '-Dwildbits=1', str(source),
+        '-I'+str(tmp), '-I'+str(source.parent), '-I'+str(ROOT/'defs'), '-DH6309=0', '-Dwildbits=1', *['-D'+value for value in defines], str(source),
         '-o'+str(tmp/name), '--symbol-dump='+str(tmp/(name+'.sym'))], cwd=tmp, capture_output=True, text=True)
     assert p.returncode == 0, p.stderr
     symbols = {n:int(v,16) for n,v in re.findall(r'^(\S+) (?:EQU|SET) \$([\da-fA-F]+)$', (tmp/(name+'.sym')).read_text(), re.M)}
@@ -262,12 +262,12 @@ def copy_checks(p):
         assert c.C==int(value==0xffffffff) and c.accu_d.value==(result&65535)
         assert c.index_x.value==WORK+field and c.index_y.value==0x1818 and c.user_stack_pointer.value==WORK
         assert c.get_cc_value()&0xd0==0xd0 # ADCA may change half-carry, as before.
-    # Preserve even the old out-of-range byte behavior, not just valid dates.
+    # Clamp FAT years to 1980..2107; retain other byte behavior.
     for axis in range(6):
         for byte in range(256):
             clock=[126,11,8,12,34,58];clock[axis]=byte
             year,month,day,hour,minute,second=clock
-            month=month or 1;day=day or 1;year=max(year,80)-80
+            month=month or 1;day=day or 1;year=min(max(year,80),207)-80
             expected=bytes(((minute*32 | second//2)&255,
                             (hour*8 | minute//8)&255,
                             (month*32 | day)&255,

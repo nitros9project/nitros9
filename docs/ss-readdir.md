@@ -1,8 +1,8 @@
 # SS.ReadDir ($2E)
 
 `I$GetStt` returns the next directory entry through the file manager. `dir`
-uses this interface for ordinary and extended listings; it no longer seeks
-past two records, reads raw directory records, or calls `SS.FDInf`.
+uses this interface for ordinary and extended listings, with a compatibility
+fallback for older RBF implementations.
 
 ## Calling convention
 
@@ -53,10 +53,30 @@ interrupts masked until the full wire transaction has finished. An older
 server ignores the unknown status; the bounded ready timeout returns
 `E$UnkSvc` without sending a stray count into its opcode parser.
 
-The updated `dir` and `deldir` require a file manager implementing `SS.ReadDir`; there
-is deliberately no raw-RBF fallback. RFM additionally requires the matching
-DriveWire server. Existing raw directory and `SS.FDInf` interfaces remain
-available for older programs.
+On `E$UnkSvc` only, `dir` and `deldir` fall back to 32-byte `I$Read`
+records, filtering free entries and exact `.`/`..` names. Extended `dir` uses
+`SS.FDInf` to append the 13-byte metadata prefix. Other errors propagate without
+fallback. This preserves older RBFs and older RFM servers that implement those
+legacy interfaces. File managers with neither enumeration interface still fail.
+
+The DriveWire record bytes are the same guest ABI, not a host-native structure:
+
+| Record offset | Bytes | Value |
+| --- | ---: | --- |
+| 0 | 29 | Name, final character high bit set; padding unspecified |
+| 29 | 3 | Opaque ID, big-endian |
+| 32 | 1 | OS-9 attribute bits (extended form only) |
+| 33 | 2 | Owner, big-endian |
+| 35 | 5 | Modification year since 1900, month, day, hour, minute |
+| 40 | 1 | Link count |
+| 41 | 4 | Byte size, big-endian |
+
+The first server status acknowledges the opcode before any count is sent.
+The second status acknowledges the requested count; nonzero status is an OS-9
+error byte and has no following record. Success sends exactly 32 or 45 bytes,
+without another length prefix. End-of-directory is `E$EOF`; malformed counts
+return `E$BPNam`. The server must retain its snapshot/cursor between requests
+and implement rewind through the existing seek operation.
 
 ## Size and verification
 

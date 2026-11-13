@@ -20,7 +20,7 @@ class Reader(t.RBF):
         self.w(t.REGS+s['R$X'],t.DATA);self.w(t.REGS+s['R$Y'],count);self.m.write_byte(t.REGS+s['R$B'],s['SS.ReadDir'])
         self.m.load(t.DATA,b'\x55'*64)
         c.index_y.set(t.PD);c.user_stack_pointer.set(t.REGS);c.system_stack_pointer.set(0x7800);self.w(0x7800,0x1fff);c.program_counter.set(t.BASE+s['GetStat'])
-        traps={t.BASE+s[n]:n for n in ['L1098','L1256','L113A']}
+        traps={t.BASE+s[n]:n for n in ['L1098','L1256','ReadCurrentSector']}
         if self.level==2:traps.update({t.BASE+s[n]:n for n in ['L0B0C','L0B02']})
         for _ in range(100000):
             pc=c.program_counter.value
@@ -31,7 +31,7 @@ class Reader(t.RBF):
                     self.sector_reads+=1
                     start=self.pos()&~255;self.m.load(t.BUF,bytes(self.disk[start:start+256]).ljust(256,b'\0'))
                     self.m.write_byte(t.PD+s['PD.SMF'],s['SINBUF']|s.get('BufBusy',0));self.result(s['E$Read'] if self.fail_read else 0)
-                elif name=='L113A':
+                elif name=='ReadCurrentSector':
                     self.fd_reads+=1;assert c.accu_b.value==0 and c.index_x.value in (20,21)
                     self.m.load(t.BUF,self.metadata+bytes(243));self.result(s['E$Read'] if self.fail_fd else 0)
                 elif name=='L0B02':self.locked=False # preserve C/B
@@ -79,12 +79,13 @@ def tests(b,s,level):
     print(f'Level {level}: ReadDir filtering, metadata, cached sectors, cursor, EOF, modes and failure retry PASS')
 
 def command_tests(binary,s):
-    def run(options='',width=80,error=0,empty=False):
+    def run(options='',width=80,error=0,empty=False,legacy=False,raw_error=0):
         cfg=t.TestCfg({'trace':False,'verbosity':0});m=t.Memory(cfg);c=t.CPU(m,cfg)
         m.load(t.BASE,binary);m.load(0x1400,(options+' /dd\r').encode())
         c.user_stack_pointer.set(0x1000);c.direct_page.set(0x10);c.index_x.set(0x1400)
         c.system_stack_pointer.set(0x7800);c.program_counter.set(t.BASE+s['start'])
-        calls=[];output=bytearray();given=False
+        calls=[];output=bytearray();given=False;raw_index=0
+        metadata=bytes([0x0b,0,2,126,11,8,14,30,1,0,0,1,2])
         def get(a,n):return bytes(m.read_byte(a+i) for i in range(n))
         for _ in range(100000):
             pc=c.program_counter.value
@@ -95,12 +96,22 @@ def command_tests(binary,s):
                 stat=c.accu_b.value
                 if stat==s['SS.ScSiz']:c.index_x.set(width)
                 else:
-                    assert stat==s['SS.ReadDir'],'dir used a filesystem-specific status'
+                    if stat==s['SS.FDInf']:
+                        assert legacy and c.index_y.value==13 and c.user_stack_pointer.value==20
+                        m.load(c.index_x.value,metadata);c.program_counter.set(pc+3);continue
+                    assert stat==s['SS.ReadDir'],'unexpected status'
+                    if legacy:
+                        c.C=1;c.accu_b.set(s['E$UnkSvc']);c.program_counter.set(pc+3);continue
                     count=c.index_y.value;calls.append(count)
                     if error or given or empty:c.C=1;c.accu_b.set(error or s['E$EOF'])
                     else:
                         data=t.entry('hello',20)+bytes([0x0b,0,2,126,11,8,14,30,1,0,0,1,2])
                         m.load(c.index_x.value,data[:count]);given=True
+            elif op==s['I$Read']:
+                assert legacy and c.index_y.value==32
+                records=[t.entry('.',10),t.entry('..',10),bytes(32),t.entry('hello',20)]
+                if raw_error or raw_index==len(records):c.C=1;c.accu_b.set(raw_error or s['E$EOF'])
+                else:m.load(c.index_x.value,records[raw_index]);raw_index+=1
             elif op==s['I$Open']:assert c.accu_a.value&0x81==0x81;c.accu_a.set(3)
             elif op==s['I$ChgDir']:
                 x=c.index_x.value
@@ -120,7 +131,13 @@ def command_tests(binary,s):
             assert status==0 and b'hello' in output,(options,width,status,output)
             assert calls==([45,45] if 'e' in options else [32,32]),calls
             if 'e' in options:assert b'ID' in output and b'Sector' not in output and b'102' in output,output
-    for error in (s['E$UnkSvc'],s['E$Read']):assert run(error=error)[0]==error
+    assert run(error=s['E$Read'])[0]==s['E$Read']
+    for options in ('','-e','-x','-ex'):
+        for width in (32,80):
+            status,output,_=run(options,width,legacy=True)
+            assert status==0 and b'hello' in output,(options,width,status,output)
+            if 'e' in options:assert b'102' in output
+    assert run(legacy=True,raw_error=s['E$Read'])[0]==s['E$Read']
     assert run(empty=True)[0]==0
     print('dir: names, extended, execution, narrow/wide, EOF and error propagation PASS')
 

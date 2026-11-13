@@ -391,7 +391,7 @@ SS.FSig             RMB       1                   New signal for temp locked fil
 * names (old, new), Y=60. Each name is 1..29 bytes. Requires parent WRITE.
 SS.Rename           EQU       $2D
 * Next directory entry: X=buffer, Y=RD.NameSize or RD.Size (readdir.d).
-SS.ReadDir          EQU       $2E
+SS.ReadDir          EQU       $2E       ; define constant or offset
 SS.DSize            EQU       SS.ScSiz            Return disk size (RBF GetStat)
 SS.VarSect          EQU       SS.DStat            Variable Sector Size (RBF GetStat)
 

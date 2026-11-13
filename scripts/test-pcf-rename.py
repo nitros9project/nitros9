@@ -73,6 +73,9 @@ def tests(tmp,level):
     ok('Open',mode=0x82,path='/pc0/LFNDIR')
     cluster=int.from_bytes(p.data(f.WORK+p.fs['F.Start'],4),'big');sector=v.sectors[v.data+cluster-2]
     sector[96:128]=sector[64:96];sector[64:96]=v.entry('LONGNAME',0,0,0x0f)
+    checksum=0
+    for char in sector[96:107]:checksum=(((checksum&1)<<7)+(checksum>>1)+char)&255
+    sector[77]=checksum  # LFN checksum must actually belong to ALIAS.TXT
     rename('ALIAS.TXT','OTHER.TXT','E$FNA');ok('Close')
     assert p.allocations==[w.b.STATE]
     print(f'PASS Level {level}: SS.Rename names/collisions/case/modes/LFN/live cwd+cxd/metadata/position/cross-sector/I/O failures',flush=True)

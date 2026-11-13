@@ -46,13 +46,13 @@
 
                     ifp1
                     use       defsfile
-                    use       readdir.d
+                    use       readdir.d ; include shared definitions or implementation
                     endc
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       14
+edition             set       14        ; set assembly value
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -69,7 +69,7 @@ narrow              rmb       1
 bufptr              rmb       2
 date                rmb       3
 time                rmb       3
-dent                rmb       RD.Size
+dent                rmb       RD.Size   ; reserve storage
 linebuff            rmb       530
 size                equ       .
 
@@ -83,7 +83,7 @@ DirOf               fcb       C$LF
 Dot                 fcc       "."
                     fcb       C$CR
 WHeader             fcb       C$CR,C$LF
-                    fcc       "Owner  Last modified   Attributes   ID   Bytecount Name"
+                    fcc       "Owner  Last modified   Attributes   ID   Bytecount Name"  ; module name or literal text
                     fcb       C$CR,C$LF
                     fcc       "----- ---------------- ---------- ------ --------- ----"
                     fcb       C$CR,C$LF
@@ -91,7 +91,7 @@ WHeaderL            equ       *-WHeader
 NHeader             fcb       C$CR,C$LF
                     fcc       "Modified on  Owner   Name"
                     fcb       C$CR,C$LF
-                    fcc       "  Attr       ID      Size"
+                    fcc       "  Attr       ID      Size"  ; module name or literal text
                     fcb       C$CR,C$LF
                     fcc       "==============================="
                     fcb       C$CR
@@ -167,8 +167,8 @@ L01A6               leax      >NHeader,pcr
                     ldy       #NHeaderL
 L01AE               lda       #$01
                     os9       I$Write
-L01B3               lbra      L0253
-L01C5               tst       <extended
+L01B3               lbra      L0253     ; continue unconditionally L0253
+L01C5               tst       <extended ; test <extended
                     bne       L01E8
                     leay      <dent,u
                     lbsr      PutStr
@@ -186,7 +186,7 @@ L01E8
                     bne       L0231               branch if so
 
 * Wide extended output
-                    ldd       <dent+RD.Owner
+                    ldd       <dent+RD.Owner ; load D from <dent+RD.Owner
                     clr       <u0006
                     bsr       L0274
                     lbsr      PutSpace
@@ -204,48 +204,47 @@ L022C               lbsr      CRnWrite
 
 * Narrow extended output
 L0231               lbsr      L030B
-                    ldd       <dent+RD.Owner
+                    ldd       <dent+RD.Owner ; load D from <dent+RD.Owner
                     clr       <u0006
                     bsr       L0274
-                    lbsr      PutSpace
+                    lbsr      PutSpace  ; call helper PutSpace
                     leay      <dent,u
                     lbsr      PutStr
                     lbsr      CRnWrite
                     lbsr      L02D3
-                    lbsr      PutSpace
-                    lbsr      PutSpace
+                    lbsr      PutSpace  ; call helper PutSpace
+                    lbsr      PutSpace  ; call helper PutSpace
                     bsr       L026E
                     bsr       L0280
                     lbsr      CRnWrite
 L0253               leax      <dent,u
-                    ldy       #RD.NameSize
-                    tst       <extended
-                    beq       RDCall
-                    ldy       #RD.Size
-RDCall              lda       <dirpath
-                    ldb       #SS.ReadDir
-                    os9       I$GetStt
+                    ldy       #RD.NameSize ; load Y from #RD.NameSize
+                    tst       <extended ; test <extended
+                    beq       RDCall    ; branch when equal or zero RDCall
+                    ldy       #RD.Size  ; load Y from #RD.Size
+RDCall              lda       <dirpath  ; load A from <dirpath
+                    lbsr      ReadDirCompat ; support portable and legacy file managers
                     lbcc      L01C5
                     cmpb      #E$EOF
                     bne       L0268
                     clrb
 L0268               lbsr      CRnWrite
 Exit                os9       F$Exit
-L026E               lda       <dent+RD.ID
+L026E               lda       <dent+RD.ID ; load A from <dent+RD.ID
                     bsr       L0298
-                    ldd       <dent+RD.ID+1
+                    ldd       <dent+RD.ID+1 ; load D from <dent+RD.ID+1
 L0274               bsr       L029A
                     tfr       b,a
                     bsr       L028E
                     inc       <u0006
                     bsr       L029C
                     bra       PutSpace
-L0280               ldd       <dent+RD.Bytes
+L0280               ldd       <dent+RD.Bytes ; load D from <dent+RD.Bytes
                     bsr       L0298
                     tfr       b,a
                     bsr       L029A
-                    lbsr      PutSpace
-                    ldd       <dent+RD.Bytes+2
+                    lbsr      PutSpace  ; call helper PutSpace
+                    ldd       <dent+RD.Bytes+2 ; load D from <dent+RD.Bytes+2
                     bra       L0274
 L028E               pshs      a
                     lsra
@@ -285,7 +284,7 @@ PutOk               sta       ,x+                 save A
 PermMask            fcc       "dsewrewr"
                     fcb       $FF
 
-L02D3               ldb       <dent+RD.Attr
+L02D3               ldb       <dent+RD.Attr ; load B from <dent+RD.Attr
                     leax      <PermMask,pcr
                     lda       ,x+
 L02DA               lslb
@@ -315,11 +314,11 @@ DoWrite             leax      <linebuff,u
                     lda       #$01
                     os9       I$WritLn
                     puls      pc,y,x,b,a
-L030B               leax      <dent+RD.Modified,u
+L030B               leax      <dent+RD.Modified,u ; point X at <dent+RD.Modified,u
 L030E               bsr       L0338
                     bsr       L0324
                     bsr       L0324
-                    lbsr      PutSpace
+                    lbsr      PutSpace  ; call helper PutSpace
                     bsr       Byte2ASC
                     tst       <narrow
                     beq       L0320
@@ -417,6 +416,7 @@ SkipNSpc            lda       ,x+
 SkipNRTS            leax      -1,x
                     rts
 
+                    use       ../level1/cmds/readdir-compat.asm ; include shared definitions or implementation
                     emod
 eom                 equ       *
                     end
