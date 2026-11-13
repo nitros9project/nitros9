@@ -1020,6 +1020,10 @@ lookcompare@        lda       ,x+       ; load A from ,x+
                     puls      x,y       ; restore x,y from stack
                     bsr       CheckLFN  ; ignore orphaned slots with a different checksum
                     lbsr      EntryLocation ; call helper EntryLocation
+                    pshs      x         ; retain the matched on-disk entry pointer
+                    ldd       #F.Start*256+F.Parent ; retain containing directory before adopting child
+                    lbsr      CopyVal   ; record parent cluster for deletion
+                    puls      x         ; adoptEntry still consumes the matched slot
                     bsr       AdoptEntry ; call helper AdoptEntry
                     rts                 ; return to caller
 looknomatch@        puls      x,y       ; restore x,y from stack

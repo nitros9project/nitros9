@@ -422,8 +422,21 @@ Failed first-cluster publication and chain linking attempt to restore disk
 metadata before reclaiming unreachable allocations. Failed truncation restores
 its in-memory identity and attempts to repair a partial directory-sector write.
 A second media failure during rollback can still require filesystem repair;
-these operations are not power-loss transactions. Parent directory modification
-timestamps are not maintained by the current short-name implementation.
+these operations are not power-loss transactions.
+
+Create, mkdir, delete, rmdir and actual rename update the containing directory's
+modification time/date. The FAT32 root has no parent entry to timestamp. For
+other directories, pcf follows `..` and matches the directory's cluster in its
+parent; this works for relative cwd paths and after a directory rename. Matching
+open-directory caches are refreshed, including device aliases, while partition
+bases keep unrelated volumes separate. Case-only rename remains a zero-write
+no-op, and rejected operations do not touch parent metadata. Creation/access
+times, attributes, child timestamps and directory positions are preserved.
+
+Parent timestamps are committed after the namespace mutation. If that metadata
+I/O fails, the operation reports the error even though the create/delete/rename
+may already have taken effect. No child mutation is undone merely because its
+parent timestamp failed; callers must account for partial I/O results.
 
 Device operation contention returns `E$DevBsy`, without sleeping. This deliberate
 nonblocking policy requires callers to yield/retry and is suitable only while

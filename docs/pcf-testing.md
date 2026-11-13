@@ -147,6 +147,13 @@ delete selection, WRITE-only directory changes, readonly `SS.Opt`, and orphaned
 LFN checksums. `test-readdir.py` and `test-deldir.py` also exercise legacy raw
 RBF fallback, including dot/free filtering and extended metadata.
 
+`make -C recipes/coco3/pcf_write_mame_test check-review PYTHON=/path/to/python`
+runs the review-failure, parent-time and booter suites. `check-all` includes this target.
+`test-pcf-parent-time.py` checks parent timestamps after create/mkdir/delete/rmdir
+and rename, child metadata preservation, relative cwd operation, open-directory
+cache refresh, partition isolation, zero-write case-only rename, and both halves
+of failed parent-sector writes. Namespace changes can precede a timestamp error.
+
 `test-boot-fat32.py` models F$BtMem's returned page-rounded allocation and guards
 the kernel tables and system memory map. It exercises signature/layout/version,
 FAT-count and OS9BOOT attribute failures; reserved/high clusters; overflow in
