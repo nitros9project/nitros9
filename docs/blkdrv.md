@@ -226,3 +226,24 @@ even if FailAfter equals Count. ReadOnly causes blkdrv to reject writes before
 calling the backend. The test suite checks content round trips, range failures,
 partial transfers, ABI rejection, resource cleanup, and register/interrupt-mask
 preservation in addition to SD protocol behavior.
+
+## Wildbits hardware verification
+
+The native SD backend interprets `SYS0` bit `SYS_SD_WP` as active-high write
+protection, in addition to the card's CSD protection flags. This polarity has
+not been confirmed on physical Wildbits hardware, including a socket without
+a write-protect switch. The legacy driver accidentally masked away the bit,
+so its behavior is not evidence for either polarity. Confirm both switch
+positions and the no-switch level before deploying writes on hardware; the
+software SPI-peer tests cannot establish the electrical polarity.
+
+A transient card-detect error returns `E$NotRdy` without permanently clearing
+the initialized state, allowing a subsequent read of the same card to recover.
+Replacing the card still requires detaching and reattaching the device, so an
+open mount cannot silently use cached geometry for a different card. CMD0 has
+a bounded retry loop for warm-reset cards still leaving a busy state.
+
+For the VHD backend, a zero FAT partition length selects the remainder of the
+24-bit-record address space (`BI.Last=$007FFFFF`), not an autodetected image
+length. The emulator does not expose the actual host-image size; out-of-image
+I/O still fails through the backend. Use an explicit length when known.

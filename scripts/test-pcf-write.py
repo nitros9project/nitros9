@@ -10,6 +10,7 @@ class Machine(f.FatMachine):
     def ok(self,name,**kw):
         if name=='Init':
             self.word(self.config+self.s['BC.Port'],0xff80)
+            self.word(b.STAT+self.s['V.PORT'],0xff80)
             self.long(self.config+self.s['BC.Base'],self.volume.base+self.volume.total-1)
             self.byte(self.config+self.s['BC.Flags'],0)
             self.reg=bytearray(7);self.status=0;self.writes=[];self.fail_write=None;self.fail_read=None

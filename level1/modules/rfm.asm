@@ -12,7 +12,7 @@
 
                     ifp1
                     use       defsfile
-                    use       readdir.d
+                    use       readdir.d ; include shared definitions or implementation
                     use       rfm.d
                     use       drivewire.d
                     endc
@@ -699,8 +699,8 @@ getstt              pshs      cc
                     lbra      BusReturn
 GetStatus           ldb       R$B,u
                     lbeq      StatusOptions
-                    cmpb      #SS.ReadDir
-                    lbeq      StatusReadDir
+                    cmpb      #SS.ReadDir ; compare B with #SS.ReadDir
+                    lbeq      StatusReadDir ; branch when equal or zero StatusReadDir
                     cmpb      #SS.Ready
                     beq       StatusReady
                     cmpb      #SS.EOF
@@ -820,40 +820,40 @@ StatusBytesDone     leas      2,s
 
 * Ready handshake prevents sending a size payload to an older server.
 * All wire bytes arrive before ToCaller can enable interrupts.
-StatusReadDir       ldx       R$Y,u
-                    cmpx      #RD.NameSize
-                    beq       ReadDirStart
-                    cmpx      #RD.Size
-                    lbne      StatusBadSize
-ReadDirStart        lda       PD.PD,y
-                    lbsr      sendgstt
-                    pshs      x,y,u
+StatusReadDir       ldx       R$Y,u     ; load X from R$Y,u
+                    cmpx      #RD.NameSize ; compare X with #RD.NameSize
+                    beq       ReadDirStart ; branch when equal or zero ReadDirStart
+                    cmpx      #RD.Size  ; compare X with #RD.Size
+                    lbne      StatusBadSize ; branch when unequal or nonzero StatusBadSize
+ReadDirStart        lda       PD.PD,y   ; load A from PD.PD,y
+                    lbsr      sendgstt  ; call helper sendgstt
+                    pshs      x,y,u     ; preserve x,y,u on stack
                     pshs      x                   requested count; StatusReceive frame
-                    lbsr      ReadDirReply
-                    bcc       ReadDirCount
-                    cmpb      #E$Read
-                    bne       ReadDirDone
-                    ldb       #E$UnkSvc
-                    bra       ReadDirDone
-ReadDirCount        leax      ,s
-                    ldy       #2
-                    lbsr      Send
-                    lbsr      ReadDirReply
-                    bcs       ReadDirDone
-                    ldy       ,s
-                    lbra      StatusReceive
-ReadDirDone         orcc      #1
-                    lbra      StatusBytesDone
-ReadDirReply        leas      -1,s
-                    leax      ,s
-                    ldy       #1
-                    lbsr      Receive
-                    bcs       ReadDirReturn
-                    ldb       ,s
-                    beq       ReadDirReturn
-                    orcc      #1
-ReadDirReturn       leas      1,s
-                    rts
+                    lbsr      ReadDirReply ; call helper ReadDirReply
+                    bcc       ReadDirCount ; branch with carry clear ReadDirCount
+                    cmpb      #E$Read   ; compare B with #E$Read
+                    bne       ReadDirDone ; branch when unequal or nonzero ReadDirDone
+                    ldb       #E$UnkSvc ; load B from #E$UnkSvc
+                    bra       ReadDirDone ; continue unconditionally ReadDirDone
+ReadDirCount        leax      ,s        ; point X at ,s
+                    ldy       #2        ; load Y from #2
+                    lbsr      Send      ; call helper Send
+                    lbsr      ReadDirReply ; call helper ReadDirReply
+                    bcs       ReadDirDone ; branch on carry or error ReadDirDone
+                    ldy       ,s        ; load Y from ,s
+                    lbra      StatusReceive ; continue unconditionally StatusReceive
+ReadDirDone         orcc      #1        ; set selected CC bits with #1
+                    lbra      StatusBytesDone ; continue unconditionally StatusBytesDone
+ReadDirReply        leas      -1,s      ; point S at -1,s
+                    leax      ,s        ; point X at ,s
+                    ldy       #1        ; load Y from #1
+                    lbsr      Receive   ; call helper Receive
+                    bcs       ReadDirReturn ; branch on carry or error ReadDirReturn
+                    ldb       ,s        ; load B from ,s
+                    beq       ReadDirReturn ; branch when equal or zero ReadDirReturn
+                    orcc      #1        ; set selected CC bits with #1
+ReadDirReturn       leas      1,s       ; point S at 1,s
+                    rts                 ; return to caller
 
 * Unimplemented setters fail before sending anything to the server. The old
 * two-byte request omitted path and status and could desynchronize the stream.

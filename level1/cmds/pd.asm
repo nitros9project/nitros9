@@ -93,7 +93,7 @@ pdloop
                     bsr       open                open it
                     bsr       rdtwo               read . and .. entires of this dir
                     bsr       findmtch            search for match
-                    lbsr      prsent
+                    lbsr      prsent    ; call helper prsent
                     ldd       <dotdotfd
                     std       <ddcopy
                     lda       <dotdotfd+2
@@ -114,7 +114,7 @@ there
                     lda       <fildes             get path
                     os9       I$Close             close
                     clrb
-exit                lbra      exit1
+exit                lbra      exit1     ; continue unconditionally exit1
 
                     ifne      PXD
 open                lda       #DIR.+EXEC.+READ.
@@ -124,14 +124,14 @@ open                lda       #DIR.+READ.
                     endc
                     endc
                     os9       I$Open
-                    lbcs      exit1
-                    lbsr      RequireRBF
-                    bcc       pdopenok@
-                    pshs      b,cc
-                    os9       I$Close
-                    puls      b,cc
-                    lbra      exit1
-pdopenok@           rts
+                    lbcs      exit1     ; branch on carry or error exit1
+                    lbsr      RequireRBF ; call helper RequireRBF
+                    bcc       pdopenok@ ; branch with carry clear pdopenok@
+                    pshs      b,cc      ; preserve b,cc on stack
+                    os9       I$Close   ; invoke OS-9 I$Close service
+                    puls      b,cc      ; restore b,cc from stack
+                    lbra      exit1     ; continue unconditionally exit1
+pdopenok@           rts                 ; return to caller
 
 * Read directory entry
 readent             lda       <fildes
@@ -193,7 +193,7 @@ wrerr               lda       #$02
                     os9       I$WritLn
 exit1               os9       F$Exit
 
-                    use       rbfguard.asm
+                    use       rbfguard.asm ; include shared definitions or implementation
                     emod
 eom                 equ       *
                     end
