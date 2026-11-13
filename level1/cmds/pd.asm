@@ -93,7 +93,7 @@ pdloop
                     bsr       open                open it
                     bsr       rdtwo               read . and .. entires of this dir
                     bsr       findmtch            search for match
-                    bsr       prsent
+                    lbsr      prsent
                     ldd       <dotdotfd
                     std       <ddcopy
                     lda       <dotdotfd+2
@@ -114,7 +114,7 @@ there
                     lda       <fildes             get path
                     os9       I$Close             close
                     clrb
-exit                bra       exit1
+exit                lbra      exit1
 
                     ifne      PXD
 open                lda       #DIR.+EXEC.+READ.
@@ -124,7 +124,14 @@ open                lda       #DIR.+READ.
                     endc
                     endc
                     os9       I$Open
-                    rts
+                    lbcs      exit1
+                    lbsr      RequireRBF
+                    bcc       pdopenok@
+                    pshs      b,cc
+                    os9       I$Close
+                    puls      b,cc
+                    lbra      exit1
+pdopenok@           rts
 
 * Read directory entry
 readent             lda       <fildes
@@ -186,6 +193,7 @@ wrerr               lda       #$02
                     os9       I$WritLn
 exit1               os9       F$Exit
 
+                    use       rbfguard.asm
                     emod
 eom                 equ       *
                     end

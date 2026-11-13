@@ -12,6 +12,7 @@
 
                     ifp1
                     use       defsfile
+                    use       readdir.d
                     use       rfm.d
                     use       drivewire.d
                     endc
@@ -698,6 +699,8 @@ getstt              pshs      cc
                     lbra      BusReturn
 GetStatus           ldb       R$B,u
                     lbeq      StatusOptions
+                    cmpb      #SS.ReadDir
+                    lbeq      StatusReadDir
                     cmpb      #SS.Ready
                     beq       StatusReady
                     cmpb      #SS.EOF
@@ -814,6 +817,43 @@ StatusCopy          ldu       R$X,u
                     clrb
 StatusBytesDone     leas      2,s
                     puls      x,y,u,pc
+
+* Ready handshake prevents sending a size payload to an older server.
+* All wire bytes arrive before ToCaller can enable interrupts.
+StatusReadDir       ldx       R$Y,u
+                    cmpx      #RD.NameSize
+                    beq       ReadDirStart
+                    cmpx      #RD.Size
+                    lbne      StatusBadSize
+ReadDirStart        lda       PD.PD,y
+                    lbsr      sendgstt
+                    pshs      x,y,u
+                    pshs      x                   requested count; StatusReceive frame
+                    lbsr      ReadDirReply
+                    bcc       ReadDirCount
+                    cmpb      #E$Read
+                    bne       ReadDirDone
+                    ldb       #E$UnkSvc
+                    bra       ReadDirDone
+ReadDirCount        leax      ,s
+                    ldy       #2
+                    lbsr      Send
+                    lbsr      ReadDirReply
+                    bcs       ReadDirDone
+                    ldy       ,s
+                    lbra      StatusReceive
+ReadDirDone         orcc      #1
+                    lbra      StatusBytesDone
+ReadDirReply        leas      -1,s
+                    leax      ,s
+                    ldy       #1
+                    lbsr      Receive
+                    bcs       ReadDirReturn
+                    ldb       ,s
+                    beq       ReadDirReturn
+                    orcc      #1
+ReadDirReturn       leas      1,s
+                    rts
 
 * Unimplemented setters fail before sending anything to the server. The old
 * two-byte request omitted path and status and could desynchronize the stream.

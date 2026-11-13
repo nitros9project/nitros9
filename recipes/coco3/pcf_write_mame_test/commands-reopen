@@ -1,0 +1,19 @@
+dir /pc0/top
+dir /dd/top/inner
+chd /pc0/top/inner
+list keep.txt
+chd ..
+dir
+chd /dd
+cmp /pc0/frag.bin /pc0/copy.bin
+dir /pc0
+list /pc0/subdir/nest.txt
+dir /dd/rntest
+list /dd/rntest/final.txt
+list /dd/rntest/finaldir/keep.txt
+chd /pc0/rntest/finaldir
+list keep.txt
+chd ..
+list final.txt
+chd /dd
+echo PCFPERSISTDONE

@@ -116,6 +116,7 @@
 
                     ifp1
                     use       defsfile
+                    use       readdir.d
                     endc
 
 rev                 set       $03
@@ -1293,6 +1294,8 @@ Writ5CB
 *
 GetStat             ldb       R$B,u               get function code
                     beq       Gst5FF              it's SS.Opt, go process
+                    cmpb      #SS.ReadDir
+                    lbeq      RDRead
                     cmpb      #SS.EOF             EOF check?
                     bne       Gst5EB              no, skip ahead
                     clr       R$B,u               default to no EOF
@@ -3537,6 +3540,8 @@ RNBusy              ldb       #E$Share
                     endc
 RN.RBF              equ       1
                     use       rename-name.d
+
+                    use       rbf-readdir.d
 
                     emod
 eom                 equ       *

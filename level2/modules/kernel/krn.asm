@@ -1239,6 +1239,21 @@ KrnActivateProcess  bsr       FAprocTarget ; activate next process
 * (or $D00 for the Wildbits) when assembled, as they have to always be in the
 * constant RAM page ($FE00-$FEFF for CoCo 3, $FD00-$FDFF for the Wildbits).
 
+* CoCo task-return preparation runs before switching maps. Keep this prefix
+* outside the constant page, leaving room for every post-switch instruction.
+                  IFEQ    wildbits+picothing
+KrnFrcSysTask       clra
+KrnSysProcDesc      ldx       <D.SysPrc
+                    lbsr      TstImg
+                    orcc      #IntMasks
+                    sta       <D.SSTskN
+                    beq       Fst2
+                    ora       <D.TINIT
+                    sta       <D.TINIT
+                    lbra      KrnRestoreTask
+                    fill      255,$0E00-*
+                  ENDC
+
 * The default routine for D.SysIRQ.
 S.SysIRQ
                     lda       <D.SSTskN ; get the current task number
@@ -1270,6 +1285,7 @@ DoneIRQ             bcc       KrnReturn ; no error on IRQ, so exit
 KrnReturn           rti                 ; return
 
 * Return from a system call.
+                  IFNE    wildbits+picothing
 KrnFrcSysTask       clra                ; force system task # to 0 (system)
 KrnSysProcDesc      ldx       <D.SysPrc ; get the system process descriptor pointer
                     lbsr      TstImg    ; check the image, and F$SetTsk (preserves A)
@@ -1283,7 +1299,8 @@ KrnSysProcDesc      ldx       <D.SysPrc ; get the system process descriptor poin
                     ora       <D.TINIT  ; merge task bit into the shadow register
                     sta       <D.TINIT  ; update the shadow register
                   ENDC
-                    sta       >DAT.Task ; save to the DAT as well
+                  ENDC
+KrnRestoreTask      sta       >DAT.Task ; save to the DAT as well
 Fst2                leas      ,u        ; put stack ptr into U
                     rti                 ; return
 
@@ -1460,6 +1477,17 @@ CrashDump           fill      255,KrnTail-*  ; pad up to the tail (computed at a
                   ENDC
 *]]] Wildbits PORT
 
+* CoCo vectors at $FEEE-$FEFF are fixed by REL/ROM. Keep the common-page
+* tail anchored when instructions above it shrink or grow. Negative fill
+* fails assembly if the kernel overruns the available space.
+                  IFEQ    wildbits+picothing
+                  IFNE    H6309
+                    fill      255,$0E86-*
+                  ELSE
+                    fill      255,$0E81-*
+                  ENDC
+                  ENDC
+
 * Execute FIRQ vector (called from $FEF4)
 FIRQVCT             ldx       #D.FIRQ   ; get the DP offset of the vector
                     bra       KrnFasterClrXxxx ; go execute it
@@ -1618,4 +1646,9 @@ SWIStack
                     bra       NMIVCT    ; nMI vector comes here
                     nop       ;         no operation placeholder
 
+                  IFEQ    wildbits+picothing
+                  IFNE    *-$0F00
+                    error     CoCo kernel vectors must end at $FF00
+                  ENDC
+                  ENDC
                     end

@@ -57,7 +57,7 @@ class Peer:
                 assert c.get_cc_value() & 0x50 == 0x50, ('unmasked DriveWire send',name,hex(pc))
                 if not self.wire_active:
                     assert packet[0]==0xd6,packet
-                    self.wire_op=packet[1];self.wire_phase=0
+                    self.wire_op=packet[1];self.wire_phase=0;self.wire_stat=packet[3] if self.wire_op==11 else 0
                     self.wire_count=int.from_bytes(packet[3:5],'big') if self.wire_op in (7,8,9,10) else 0
                     self.wire_active=not (self.wire_op in (8,10) and self.wire_count==0)
                 elif self.wire_op in (8,10):
@@ -72,6 +72,9 @@ class Peer:
                     count=int.from_bytes(response,'big')
                     self.wire_active=0<count<=self.wire_count
                     self.wire_phase=1
+                elif self.wire_op==11 and self.wire_stat==0x2e and self.wire_phase<2:
+                    self.wire_active=response==b'\0'
+                    self.wire_phase+=1
                 elif self.wire_op==0x14 and self.wire_phase==0 and response==b'\x00':
                     self.wire_phase=1
                 else:
@@ -216,6 +219,20 @@ def tests(binary,s,level):
         assert len(p.tx)==2
         p=peer();p.fail_move=True
         assert p.run('write',7,data=b'1234567')[:2]==(1,s['E$IBA']) and not p.tx
+    for count in (32,45):
+        for cc in (0,0x10,0x40,0x50):
+            p=peer();payload=bytes(range(count))
+            assert p.run('getstt',count,s['SS.ReadDir'],responses=[b'\0',b'\0',payload],initial_cc=cc)[:2]==(0,0)
+            assert p.tx==[bytes([0xd6,11,7,0x2e]),count.to_bytes(2,'big')],p.tx
+            assert p.get(DATA,count)==payload
+    for responses,error in [([None],'E$UnkSvc'),([bytes([201])],'E$BPNum'),([b'\0',bytes([211])],'E$EOF'),([b'\0',None],'E$Read'),([b'\0',b'\0',None],'E$Read')]:
+        p=peer();assert p.run('getstt',45,s['SS.ReadDir'],responses=responses)[:2]==(1,s[error])
+        if len(responses)==1:assert len(p.tx)==1
+    for count in (0,31,33,44,46,256):
+        p=peer();assert p.run('getstt',count,s['SS.ReadDir'])[:2]==(1,s['E$BPNam']) and not p.tx
+    if level==2:
+        p=peer();p.fail_move=True
+        assert p.run('getstt',32,s['SS.ReadDir'],responses=[b'\0',b'\0',bytes(32)])[:2]==(1,s['E$IBA'])
     print(f'Level {level}: transfer, status, errors, line boundary and Close PASS')
 
 def cpu_fixture(binary):
