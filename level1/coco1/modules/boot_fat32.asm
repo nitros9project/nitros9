@@ -1,272 +1,316 @@
 * FAT32 OS9Boot loader for the CoCo VHD interface.
-* CoCo Level 2 only. Exact $1D0-byte slot, including header and CRC.
+* CoCo Level 2 only: exactly $1D0 bytes, including header and CRC.
 * FATBase is the volume's 512-byte LBA; no partition-table scan is performed.
-* Requires a valid FAT32 BPB, 512-byte sectors, 1 or 2 FATs, and authoritative
-* FAT #0. Finds root short name OS9BOOT, traversing directory/file chains.
-* Uses 24-bit 256-byte record addresses: this is the VHD's 4 GiB limit,
-* not a restriction on pcf or blkdrv. No embedded file system or boot file.
-* Standalone early-boot code: no file manager or device driver required.
-* Returns X=loaded file, D=exact bytes, C clear; C set on failure.
-* Deliberately small: not a general FAT validator (e.g. no cycle detector).
+* Supports FAT #0, one/two FATs, 512-byte sectors and fragmented root/file chains.
+* Checks the signature, FAT32 BPB layout/version, FAT count, regular-file type,
+* reserved clusters and overflow in 24-bit VHD record arithmetic.
+* Not a complete filesystem validator: media must have consistent geometry and
+* chains. A cycle detector and LFN/subdirectory boot paths are not provided.
+*
+* U anchors a private stack frame. The first record buffer is $0800, the later
+* system-stack page (D.SysStk=$0900), unused while the early kernel S is below it.
+* $0900 contains D.SysMem and must never be used as a second DMA buffer.
+* After F$BtMem, DMA goes directly into successive page-aligned output pages.
+* A FAT read can use the next unfilled page: the following data read replaces it.
+* F$BtMem returns the rounded allocation in D, used as the page count.
+* The exact file size and image pointer are saved below the private frame;
+* Loaded pops X then D. Error unwinds any nested calls directly from U.
+* Returns X=image, D=exact size, carry clear; otherwise B=error and carry set.
+* Routine placement keeps branches within this fixed slot; use label names,
+* not assumed addresses, when changing it.
                     ifp1
-                    use       defsfile  ; include shared definitions or implementation
+                    use       defsfile  ; include OS-9 and hardware definitions
                   ENDC            ; conditional assembly
                     ifndef    FATBase   ; conditional assembly
-FATBase             equ       0         ; define constant or offset
+FATBase             equ       0         ; define the assembly constant
                   ENDC            ; conditional assembly
                     ifndef    DEVADDR   ; conditional assembly
-DEVADDR             equ       $FF80     ; define constant or offset
+DEVADDR             equ       $FF80     ; define the assembly constant
                   ENDC            ; conditional assembly
                     ifndef    DISKNUM   ; conditional assembly
-DISKNUM             equ       0         ; define constant or offset
+DISKNUM             equ       0         ; define the assembly constant
                   ENDC            ; conditional assembly
                   IFNE    Level-2 ; conditional assembly
-                    error     FAT32 VHD Boot requires CoCo Level 2
+                    error     FAT32     ; vhd Boot requires CoCo Level 2  ; literal text or assembly diagnostic
                   ENDC            ; conditional assembly
                   IFLT    FATBase ; conditional assembly
-                    error     FATBase must be nonnegative
+                    error     FATBase   ; must be nonnegative  ; literal text or assembly diagnostic
                   ENDC            ; conditional assembly
                   IFGT    FATBase-$7FFFFF ; conditional assembly
-                    error     FATBase exceeds VHD address space
+                    error     FATBase   ; exceeds VHD address space  ; literal text or assembly diagnostic
                   ENDC            ; conditional assembly
                   IFLT    DISKNUM ; conditional assembly
-                    error     VHD unit must be 0 or 1
+                    error     VHD       ; unit must be 0 or 1  ; literal text or assembly diagnostic
                   ENDC            ; conditional assembly
                   IFGT    DISKNUM-1 ; conditional assembly
-                    error     VHD unit must be 0 or 1
+                    error     VHD       ; unit must be 0 or 1  ; literal text or assembly diagnostic
                   ENDC            ; conditional assembly
-                    org       0         ; set storage origin
-record              rmb       3         ; reserve storage
-cluster             rmb       3         ; reserve storage
-fatstart            rmb       3         ; reserve storage
-database            rmb       3         ; reserve storage
-remaining           rmb       1         ; reserve storage
-spc                 rmb       1         ; reserve storage
-pages               rmb       1         ; reserve storage
-fatcount            rmb       1         ; reserve storage
-buffer              rmb       2         ; reserve storage
-image               rmb       2         ; reserve storage
-bootsize            rmb       2         ; reserve storage
-dest                rmb       2         ; reserve storage
-size                equ       .         ; define constant or offset
-                    mod       eom,name,Systm+Objct,ReEnt+1,start,size ; emit OS-9 module header
-name                fcs       /Boot/              ; module name or literal text
-start               orcc      #IntMasks ; set selected CC bits with #IntMasks
-                    leas      -size,s   ; point S at -size,s
+*                   Keep      near branches short while the fixed-size assertion bounds any growth.  ; keep near branches short while the fixed-size assertion bounds any growth.
+                    pragma    autobranchlength
+                    org       0         ; begin stack-field offsets
+* current page-aligned DMA destination.
+buffer              rmb       2         ; reserve 2 stack bytes
+* remaining allocated output pages.
+pages               rmb       1         ; reserve 1 stack bytes
+* 256-byte records left in this cluster; zero also encodes 256 initially.
+remaining           rmb       1         ; reserve 1 stack bytes
+* validated power-of-two sectors per cluster.
+spc                 rmb       1         ; reserve 1 stack bytes
+* current 24-bit VHD record address.
+record              rmb       3         ; reserve 3 stack bytes
+* current 24-bit FAT cluster.
+cluster             rmb       3         ; reserve 3 stack bytes
+* first FAT record address.
+fatstart            rmb       3         ; reserve 3 stack bytes
+* first data record address.
+database            rmb       3         ; reserve 3 stack bytes
+* private stack-frame bytes.
+size                equ       .         ; define the assembly constant
+                    mod       eom,name,Systm+Objct,ReEnt+1,start,size ; emit the OS-9 module header
+name                fcs       /Boot/              ; literal text or assembly diagnostic
+* increment only when another record is actually requested.
+next                tst       remaining,u ; test remaining,u
+                    beq       fatlink   ; branch if zero/equal to fatlink
+                    inc       record+2,u ; increment record+2,u
+                    bne       getdata   ; branch if nonzero/unequal to getdata
+                    inc       record+1,u ; increment record+1,u
+                    bne       getdata   ; branch if nonzero/unequal to getdata
+                    inc       record,u  ; increment record,u
+                    beq       bad       ; branch if zero/equal to bad
+* read the requested data record into the current output page.
+getdata             dec       remaining,u ; decrement remaining,u
+                    bra       read      ; continue at read
+* FAT entry record = fatstart + cluster / 64.
+fatlink
+                    ldd       cluster,u ; load D from cluster,u
+                    std       record,u  ; store D in record,u
+                    lda       cluster+2,u ; load A from cluster+2,u
+                    sta       record+2,u ; store A in record+2,u
+                    ldb       #6        ; load B from #6
+halve               lsr       record,u  ; shift right record,u
+                    ror       record+1,u ; rotate right through carry record+1,u
+                    ror       record+2,u ; rotate right through carry record+2,u
+                    decb                ; decrement the byte/count operand
+                    bne       halve     ; branch if nonzero/unequal to halve
+                    leay      fatstart,u ; set Y from fatstart,u
+                    bsr       add       ; call add
+                    bsr       read      ; call read
+                    ldb       cluster+2,u ; load B from cluster+2,u
+                    lslb                ; scale the FAT entry offset by two
+                    lslb                ; scale the FAT entry offset by two
+                    abx                 ; index the FAT entry within its 256-byte record
+                    bsr       number    ; call number
+                    bsr       setcluster ; call setcluster
+                    bra       locate    ; continue at locate
+* initialize the early-boot frame and select the VHD unit.
+start               orcc      #IntMasks ; mask interrupts with #IntMasks
+                    leas      -size,s   ; set S from -size,s
                     tfr       s,u       ; transfer registers s,u
-* The early kernel starts S below $800. Page $800 is reserved for the
-* later system stack (D.SysStk=$900), so it is free during F$Boot. Keeping
-* scratch above S avoids the process descriptor at $600 and DMA bank splits.
                     ldd       #$0800    ; load D from #$0800
-                    std       buffer,u  ; save D in buffer,u
+                    std       buffer,u  ; store D in buffer,u
                     lda       #DISKNUM  ; load A from #DISKNUM
-                    sta       DEVADDR+6 ; save A in DEVADDR+6
-                    lda       #(FATBase*2)/65536 ; load A from #(FATBase*2)/65536
-                    sta       record,u  ; save A in record,u
-                    ldd       #(FATBase*2)&65535 ; load D from #(FATBase*2)&65535
-                    std       record+1,u ; save D in record+1,u
-                    lbsr      read      ; call helper read
+                    sta       DEVADDR+6 ; store A in DEVADDR+6
+                    lda       #(FATBase*2+1)/65536 ; load A from #(FATBase*2+1)/65536
+                    sta       record,u  ; store A in record,u
+                    ldd       #(FATBase*2+1)&65535 ; load D from #(FATBase*2+1)&65535
+                    std       record+1,u ; store D in record+1,u
+                    lbsr      read      ; call read
+                    ldd       254,x     ; load D from 254,x
+                    subd      #$55AA    ; subtract/check the 16-bit operand #$55AA
+                    bne       badearly  ; branch if nonzero/unequal to badearly
+                    dec       record+2,u ; decrement record+2,u
+                    lbsr      read      ; call read
+                    ldd       17,x      ; load D from 17,x
+                    bne       badearly  ; branch if nonzero/unequal to badearly
+                    ldd       22,x      ; load D from 22,x
+                    bne       badearly  ; branch if nonzero/unequal to badearly
                     ldd       11,x      ; load D from 11,x
-                    cmpd      #$0002    ; compare D with #$0002
-                    lbne      bad       ; branch when unequal or nonzero bad
+                    subd      #$0002    ; subtract/check the 16-bit operand #$0002
+                    bne       badearly  ; branch if nonzero/unequal to badearly
                     lda       13,x      ; load A from 13,x
-                    lbeq      bad       ; branch when equal or zero bad
-                    deca                ; decrement accumulator A
-                    bita      13,x      ; test A against 13,x
-                    lbne      bad       ; branch when unequal or nonzero bad
-                    inca                ; increment accumulator A
-                    sta       spc,u     ; save A in spc,u
-                    lda       16,x      ; load A from 16,x
-                    sta       fatcount,u ; save A in fatcount,u
-                    leax      14,x      ; point X at 14,x
-                    lbsr      word      ; call helper word
-                    aslb                ; shift or rotate accumulator B
-                    rola                ; shift or rotate accumulator A
-                    std       record+1,u ; save D in record+1,u
-                    lda       #0        ; load A from #0
-                    rola                ; shift or rotate accumulator A
-                    sta       record,u  ; save A in record,u
-                    leay      volume,pcr ; point Y at volume,pcr
-                    lbsr      add       ; call helper add
-                    ldd       record,u  ; load D from record,u
-                    std       fatstart,u ; save D in fatstart,u
-                    lda       record+2,u ; load A from record+2,u
-                    sta       fatstart+2,u ; save A in fatstart+2,u
+                    sta       spc,u     ; store A in spc,u
+                    beq       badearly  ; branch if zero/equal to badearly
+                    deca                ; form SPC minus one for the power-of-two test
+                    bita      13,x      ; test attribute/cluster bits with 13,x
+                    bne       badearly  ; branch if nonzero/unequal to badearly
+                    bra       geometry  ; continue at geometry
+* issue one synchronous 256-byte VHD DMA read.
+read                lda       record,u  ; load A from record,u
+                    sta       DEVADDR   ; store A in DEVADDR
+                    ldd       record+1,u ; load D from record+1,u
+                    std       DEVADDR+1 ; store D in DEVADDR+1
                     ldx       buffer,u  ; load X from buffer,u
-                    leax      36,x      ; point X at 36,x
-                    lbsr      number    ; call helper number
-                    std       record+1,u ; save D in record+1,u
-* For 1/2 FATs, shift 1/2 times: FATSize * FATCount * two VHD records.
-geo                 lbsr      shift     ; call helper shift
-                    dec       fatcount,u ; decrement fatcount,u
-                    bne       geo       ; branch when unequal or nonzero geo
-                    leay      fatstart,u ; point Y at fatstart,u
-                    lbsr      add       ; call helper add
-                    ldd       record,u  ; load D from record,u
-                    std       database,u ; save D in database,u
-                    lda       record+2,u ; load A from record+2,u
-                    sta       database+2,u ; save A in database+2,u
-                    ldx       buffer,u  ; load X from buffer,u
-                    leax      44,x      ; point X at 44,x
-                    lbsr      number    ; call helper number
-                    lbsr      setcluster ; call helper setcluster
-                    lbsr      locate    ; call helper locate
-search
-entry               tst       ,x        ; test ,x
-                    beq       bad       ; branch when equal or zero bad
-                    leay      filename,pcr ; point Y at filename,pcr
-                    pshs      x         ; preserve x on stack
-                    ldb       #11       ; load B from #11
-compare             lda       ,x+       ; load A from ,x+
-                    cmpa      ,y+       ; compare A with ,y+
-                    bne       mismatch  ; branch when unequal or nonzero mismatch
-                    decb                ; decrement accumulator B
-                    bne       compare   ; branch when unequal or nonzero compare
-                    puls      x         ; restore x from stack
-                    bra       found     ; continue unconditionally found
-mismatch            puls      x         ; restore x from stack
-                    leax      32,x      ; point X at 32,x
-                    tfr       x,d       ; transfer registers x,d
-                    tstb                ; test accumulator B
-                    bne       entry     ; branch when unequal or nonzero entry
-                    lbsr      next      ; call helper next
-                    bra       search    ; continue unconditionally search
-* OS9 boot memory and returned length are 16-bit; reject a rounded overflow.
-found               ldd       30,x      ; load D from 30,x
-                    bne       bad       ; branch when unequal or nonzero bad
-                    leax      28,x      ; point X at 28,x
-                    bsr       word      ; call helper word
-                    std       bootsize,u ; save D in bootsize,u
-                    beq       bad       ; branch when equal or zero bad
-                    addd      #255      ; add to D: #255
-                    bcs       bad       ; branch on carry or error bad
-                    sta       pages,u   ; save A in pages,u
-                    subd      #255      ; subtract from D: #255
-                    pshs      u,x       ; preserve u,x on stack
-                    os9       F$BtMem   ; invoke OS-9 F$BtMem service
-                    tfr       u,y       ; transfer registers u,y
-                    puls      u,x       ; restore u,x from stack
-                    bcs       error     ; branch on carry or error error
-                    sty       image,u   ; save Y in image,u
-                    sty       dest,u    ; save Y in dest,u
-                    lda       -8,x      ; load A from -8,x
-                    sta       record,u  ; save A in record,u
-                    leax      -2,x      ; point X at -2,x
-                    bsr       word      ; call helper word
-                    bsr       setcluster ; call helper setcluster
-                    bsr       locate    ; call helper locate
-load
-                    ldy       dest,u    ; load Y from dest,u
-                    clrb                ; clear accumulator B and carry
-copy                lda       ,x+       ; load A from ,x+
-                    sta       ,y+       ; save A in ,y+
-                    decb                ; decrement accumulator B
-                    bne       copy      ; branch when unequal or nonzero copy
-                    sty       dest,u    ; save Y in dest,u
-                    dec       pages,u   ; decrement pages,u
-                    beq       loaded    ; branch when equal or zero loaded
-                    bsr       next      ; call helper next
-                    bra       load      ; continue unconditionally load
-loaded
-                    ldx       image,u   ; load X from image,u
-                    clrb                ; clear accumulator B and carry
-                    ldd       bootsize,u ; load D from bootsize,u
-error               leas      size,s    ; point S at size,s
+                    stx       DEVADDR+4 ; store X in DEVADDR+4
+                    clr       DEVADDR+3 ; clr DEVADDR+3
+                    tst       DEVADDR+3 ; test DEVADDR+3
+                    bne       badearly  ; branch if nonzero/unequal to badearly
                     rts                 ; return to caller
-bad                 tfr       u,s       ; transfer registers u,s
+* add a 24-bit record base and reject carry past bit 23.
+add                 ldd       record+1,u ; load D from record+1,u
+                    addd      1,y       ; add the low record word from 1,y
+                    std       record+1,u ; store D in record+1,u
+                    lda       record,u  ; load A from record,u
+                    adca      ,y        ; add the high record byte with carry from ,y
+                    lbcs      bad       ; reject carry/overflow via bad
+                    sta       record,u  ; store A in record,u
+                    rts                 ; return to caller
+* adopt the decoded cluster; Locate creates its record address.
+setcluster          std       cluster+1,u ; store D in cluster+1,u
+                    lda       record,u  ; load A from record,u
+                    sta       cluster,u ; store A in cluster,u
+                    rts                 ; return to caller
+* record = database + (cluster - 2) * SPC * 2.
+locate              ldd       cluster+1,u ; load D from cluster+1,u
+                    subd      #2        ; subtract/check the 16-bit operand #2
+                    std       record+1,u ; store D in record+1,u
+                    lda       cluster,u ; load A from cluster,u
+                    sbca      #0        ; propagate the cluster subtraction borrow from #0
+                    bcs       bad       ; reject carry/overflow via bad
+                    sta       record,u  ; store A in record,u
+                    ldb       spc,u     ; load B from spc,u
+                    stb       remaining,u ; store B in remaining,u
+                    asl       remaining,u ; shift left remaining,u
+* multiply by the cluster size, rejecting dropped high bits.
+scale               bsr       shift     ; call shift
+                    lsrb                ; advance the power-of-two shift count
+                    bne       scale     ; branch if nonzero/unequal to scale
+                    leay      database,u ; set Y from database,u
+                    bsr       add       ; call add
+                    bra       getdata   ; continue at getdata
+* return invalid-media error through the common stack unwind.
+badearly
                     ldb       #E$BTYP   ; load B from #E$BTYP
-                    coma                ; complement A and set carry
-                    bra       error     ; continue unconditionally error
-* Decode a little-endian 24-bit FAT value; VHD cannot address beyond 4 GiB.
-number              lda       2,x       ; load A from 2,x
-                    sta       record,u  ; save A in record,u
+                    coma                ; set carry for an OS-9 error
+                    lbra      error     ; continue at error
+* decode FAT/data addresses while retaining the BPB pointer in X.
+geometry
+                    leax      14,x      ; set X from 14,x
+                    lbsr      word      ; call word
+                    aslb                ; double the low reserved-sector byte
+                    rola                ; carry into the high reserved-sector byte
+                    std       record+1,u ; store D in record+1,u
+                    lda       #0        ; load A from #0
+                    rola                ; carry into the high reserved-sector byte
+                    sta       record,u  ; store A in record,u
+                    leay      volume,pcr ; set Y from volume,pcr
+                    lbsr      add       ; call add
+                    ldd       record,u  ; load D from record,u
+                    std       fatstart,u ; store D in fatstart,u
+                    lda       record+2,u ; load A from record+2,u
+                    sta       fatstart+2,u ; store A in fatstart+2,u
+                    ldx       buffer,u  ; load X from buffer,u
+                    leax      36,x      ; set X from 36,x
+                    lbsr      number    ; call number
+                    std       record+1,u ; store D in record+1,u
+                    ldb       -20,x     ; load B from -20,x
+                    decb                ; decrement the byte/count operand
+                    cmpb      #1        ; check the maximum normalized FAT count #1
+                    bhi       badearly  ; reject an unsigned excess via badearly
+* one shift for one FAT, two shifts for two FATs.
+geo                 lbsr      shift     ; call shift
+                    decb                ; decrement the byte/count operand
+                    bpl       geo       ; repeat while the FAT shift count is nonnegative at geo
+                    leay      fatstart,u ; set Y from fatstart,u
+                    lbsr      add       ; call add
+                    ldd       record,u  ; load D from record,u
+                    std       database,u ; store D in database,u
+                    lda       record+2,u ; load A from record+2,u
+                    sta       database+2,u ; store A in database+2,u
+                    leax      8,x       ; x still addresses BPB FATSize at 36; root cluster is at 44
+                    ldd       -2,x      ; load D from -2,x
+                    bne       bad       ; branch if nonzero/unequal to bad
+                    bsr       number    ; call number
+                    lbsr      setcluster ; call setcluster
+                    lbsr      locate    ; call locate
+                    bra       search    ; continue at search
+* nearby trampoline for late validation failures.
+bad                 lbra      badearly  ; continue at badearly
+* reject high cluster bits not representable by this VHD booter.
+number              lda       3,x       ; load A from 3,x
+                    anda      #15       ; ignore reserved FAT bits with #15
+                    bne       bad       ; branch if nonzero/unequal to bad
+                    lda       2,x       ; load A from 2,x
+                    sta       record,u  ; store A in record,u
+* decode a little-endian word without changing X.
 word                ldb       ,x        ; load B from ,x
                     lda       1,x       ; load A from 1,x
                     rts                 ; return to caller
-setcluster          std       record+1,u ; save D in record+1,u
-                    std       cluster+1,u ; save D in cluster+1,u
-                    lda       record,u  ; load A from record,u
-                    sta       cluster,u ; save A in cluster,u
-                    rts                 ; return to caller
-* Start a cluster: record = database + (cluster-2)*sectors/cluster*2.
-* Read its first record here, so a 128-sector cluster's 256-record count
-* can wrap to zero initially and then decrement to 255 before next tests it.
-locate              ldd       cluster+1,u ; load D from cluster+1,u
-                    subd      #2        ; subtract from D: #2
-                    std       record+1,u ; save D in record+1,u
-                    lda       cluster,u ; load A from cluster,u
-                    sbca      #0        ; subtract from A with borrow: #0
-                    sta       record,u  ; save A in record,u
-                    ldb       spc,u     ; load B from spc,u
-                    stb       remaining,u ; save B in remaining,u
-                    asl       remaining,u ; shift left remaining,u
-scale               bsr       shift     ; call helper shift
-                    lsrb                ; shift or rotate accumulator B
-                    bne       scale     ; branch when unequal or nonzero scale
-                    leay      database,u ; point Y at database,u
-                    bsr       add       ; call helper add
-                    bra       getdata   ; continue unconditionally getdata
+* compile-time volume base in VHD records.
+volume              fcb       (FATBase*2)/65536 ; emit constant bytes
+                    fdb       (FATBase*2)&65535 ; emit constant word
+* exact padded 8.3 alias, including the blank extension.
+filename            fcc       /OS9BOOT    /       ; literal text or assembly diagnostic
+* double a 24-bit record operand with an overflow check.
 shift               asl       record+2,u ; shift left record+2,u
                     rol       record+1,u ; rotate left through carry record+1,u
                     rol       record,u  ; rotate left through carry record,u
+                    bcs       bad       ; reject carry/overflow via bad
                     rts                 ; return to caller
-* Fetch the next 256-byte record; follow FAT when a cluster is exhausted.
-next                tst       remaining,u ; test remaining,u
-                    bne       getdata   ; branch when unequal or nonzero getdata
-                    ldd       cluster,u ; load D from cluster,u
-                    std       record,u  ; save D in record,u
-                    lda       cluster+2,u ; load A from cluster+2,u
-                    sta       record+2,u ; save A in record+2,u
-                    ldb       #6        ; load B from #6
-halve               lsr       record,u  ; shift right unsigned record,u
-                    ror       record+1,u ; rotate right through carry record+1,u
-                    ror       record+2,u ; rotate right through carry record+2,u
-                    decb                ; decrement accumulator B
-                    bne       halve     ; branch when unequal or nonzero halve
-                    leay      fatstart,u ; point Y at fatstart,u
-                    bsr       add       ; call helper add
-                    bsr       read      ; call helper read
-                    ldb       cluster+2,u ; load B from cluster+2,u
-                    lslb                ; shift or rotate accumulator B
-                    lslb                ; shift or rotate accumulator B
-                    abx                 ; add unsigned B to X
-                    lda       3,x       ; load A from 3,x
-                    anda      #15       ; mask A with #15
-                    bne       bad       ; branch when unequal or nonzero bad
-                    bsr       number    ; call helper number
-                    bsr       setcluster ; call helper setcluster
-                    bra       locate    ; continue unconditionally locate
-getdata             dec       remaining,u ; decrement remaining,u
-                    bsr       read      ; call helper read
-                    inc       record+2,u ; increment record+2,u
-                    bne       ret       ; branch when unequal or nonzero ret
-                    inc       record+1,u ; increment record+1,u
-                    bne       ret       ; branch when unequal or nonzero ret
-                    inc       record,u  ; increment record,u
-ret                 rts                 ; return to caller
-add                 ldd       record+1,u ; load D from record+1,u
-                    addd      1,y       ; add to D: 1,y
-                    std       record+1,u ; save D in record+1,u
-                    lda       record,u  ; load A from record,u
-                    adca      ,y        ; add to A with carry: ,y
-                    sta       record,u  ; save A in record,u
+* recover the image pointer and exact size from the private save stack.
+loaded
+                    puls      x         ; restore x on the private stack
+                    clrb                ; clear carry before returning the exact file size
+                    puls      d         ; restore d on the private stack
+* discard private state and nested call frames without touching carry.
+error               leas      size,u    ; set S from size,u
                     rts                 ; return to caller
-read                lda       record,u  ; load A from record,u
-                    sta       DEVADDR   ; save A in DEVADDR
-                    ldd       record+1,u ; load D from record+1,u
-                    std       DEVADDR+1 ; save D in DEVADDR+1
-                    ldx       buffer,u  ; load X from buffer,u
-                    stx       DEVADDR+4 ; save X in DEVADDR+4
-                    clr       DEVADDR+3 ; clear DEVADDR+3
-                    tst       DEVADDR+3 ; test DEVADDR+3
-                    beq       ret       ; branch when equal or zero ret
-* Abandon nested subroutine calls on a device error.
-                    lbra      bad       ; continue unconditionally bad
-volume              fcb       (FATBase*2)/65536 ; emit byte data
-                    fdb       (FATBase*2)&65535 ; emit word data
-filename            fcc       /OS9BOOT    /       ; module name or literal text
-* Any growth past $1D0 (including CRC) makes the fill fail at assembly time.
-codeend             equ       *         ; define constant or offset
-                    fill      $39,464-3-* ; pad to the required layout
-                    emod      ;         finish module and CRC
-eom                 equ       *         ; define constant or offset
+* accept only a regular file whose size fits the Boot contract.
+found               ldd       30,x      ; load D from 30,x
+                    bne       bad       ; branch if nonzero/unequal to bad
+                    leax      28,x      ; set X from 28,x
+                    bsr       word      ; call word
+                    std       ,--s      ; save exact size; STD also tests the full word for zero
+                    beq       bad       ; branch if zero/equal to bad
+                    pshs      u,x       ; preserve u,x on the private stack
+                    os9       F$BtMem   ; os9 F$BtMem
+                    tfr       u,y       ; transfer registers u,y
+                    puls      u,x       ; restore u,x on the private stack
+                    bcs       error     ; reject carry/overflow via error
+                    sta       pages,u   ; f$BtMem returns the page-rounded allocation in A
+                    pshs      y         ; preserve y on the private stack
+                    sty       buffer,u  ; store Y in buffer,u
+                    ldd       -8,x      ; load D from -8,x
+                    tstb                ; test the remaining count or high cluster byte
+                    bne       bad       ; branch if nonzero/unequal to bad
+                    sta       record,u  ; store A in record,u
+                    leax      -2,x      ; set X from -2,x
+                    bsr       word      ; call word
+                    bsr       setcluster ; call setcluster
+                    bsr       locate    ; call locate
+                    bra       load      ; continue at load
+* each page is already in place after VHD DMA.
+load                dec       pages,u   ; decrement pages,u
+                    beq       loaded    ; branch if zero/equal to loaded
+                    inc       buffer,u  ; increment buffer,u
+                    bsr       next      ; call next
+                    bra       load      ; continue at load
+* scan complete short-name records, following fragmented root chains.
+search
+entry               tst       ,x        ; test ,x
+                    beq       bad       ; branch if zero/equal to bad
+                    leay      filename,pcr ; set Y from filename,pcr
+                    pshs      x         ; preserve x on the private stack
+                    ldb       #11       ; load B from #11
+                    lda       11,x      ; filter non-file aliases before matching the name
+                    bita      #$18      ; directories, volume labels and LFN records
+                    bne       mismatch  ; B is nonzero and X is already saved
+compare             lda       ,x+       ; load A from ,x+
+                    cmpa      ,y+       ; cmpa ,y+
+                    bne       mismatch  ; branch if nonzero/unequal to mismatch
+                    decb                ; decrement the byte/count operand
+                    bne       compare   ; branch if nonzero/unequal to compare
+mismatch            puls      x         ; restore x on the private stack
+                    tstb                ; test the remaining count or high cluster byte
+                    beq       found     ; branch if zero/equal to found
+                    leax      32,x      ; set X from 32,x
+                    tfr       x,d       ; transfer registers x,d
+                    tstb                ; test the remaining count or high cluster byte
+                    bne       entry     ; branch if nonzero/unequal to entry
+                    lbsr      next      ; call next
+                    bra       search    ; continue at search
+* end of executable code and literals, before slot padding.
+codeend             equ       *         ; define the assembly constant
+                    fill      $39,464-3-* ; fail assembly if the 464-byte slot is exceeded
+                    emod      ;         finish the module and CRC
+* complete OS-9 module size.
+eom                 equ       *         ; define the assembly constant

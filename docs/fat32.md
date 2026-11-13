@@ -136,8 +136,15 @@ disabled, FAT #0 must be the active FAT. The entire accessed volume must fit
 within the VHD interface's 4 GiB address space. There is no partition-table
 search, long-name lookup, subdirectory boot path, or hardware SD variant yet.
 
-The loader rejects zero/invalid cluster sizes, non-512-byte sectors, missing
-files, early end-of-chain, read failures, and unrepresentable boot-file sizes.
+The loader checks the `$55AA` signature in the BPB's second 256-byte record,
+FAT32-only root-entry/FAT16-size fields and filesystem version zero, and a FAT
+count of one or two. Directories, volume labels and LFN slots are skipped before name matching, so
+an `OS9BOOT` label cannot hide the actual regular boot file.
+Cluster zero/one and arithmetic overflow in FAT/data record calculations are
+rejected, including a record increment past the VHD limit. A file may end at
+the final valid VHD record. Zero/invalid cluster sizes, non-512-byte sectors,
+missing files, early end-of-chain, read failures and unrepresentable boot-file
+sizes also fail.
 Boot-file length must be 1..65,280 bytes and fit available kernel boot memory.
 To fit 464 bytes it relies on a valid, consistent filesystem: it does not do
 full BPB/range validation or detect directory-chain cycles. Use a filesystem
@@ -147,7 +154,14 @@ minimal booter; pcf retains its more extensive validation.
 The CoCo Level 2 early stack is below `$0800`. The booter uses the reserved,
 not-yet-active system-stack page `$0800..$08FF` as a 256-byte DMA buffer, keeping
 kernel process/dispatch tables untouched and avoiding VHD 8K boundary splits.
-It uses 24 bytes of stack-local state plus subroutine/system-call stack space.
+It uses a 17-byte stack-local frame plus four saved size/image bytes during
+file loading, as well as subroutine/system-call stack space. The signature is
+read first into the same scratch page. Once `F$BtMem` allocates the image,
+page-aligned DMA writes directly to successive output pages. FAT reads may use
+the next unfilled output page, which the following data read replaces. The
+kernel returns the rounded allocation in D; the booter saves the exact file
+size separately. Routine placement and automatic branch sizing retain the
+464-byte limit without changing Rel or Krn.
 The scratch page is reusable after boot; no persistent fixture is loaded.
 
 Run the instruction-level and real MAME tests with:
@@ -416,9 +430,8 @@ nonblocking policy requires callers to yield/retry and is suitable only while
 backends complete synchronously. A sleeping backend requires a wait/wakeup
 protocol before use with pcf. `SS.Lock` remains unsupported.
 
-The 464-byte VHD booter consumes its entire fixed slot. It assumes a consistent,
-prevalidated FAT32 volume and does not replace pcf's geometry/chain validation:
-it does not check the BPB signature, FAT type, FAT-count range, OS9BOOT attribute,
-reserved cluster numbers, or every address overflow. Do not boot untrusted or
-corrupt media through this loader. Validate generated media with `fsck_msdos -n`
-or `fsck.fat -n` before use. The writable integration also checks both boot images.
+The 464-byte VHD booter consumes its entire fixed slot. Its BPB, entry-type,
+reserved-cluster and address-overflow checks do not replace pcf's full geometry
+and chain validation. It still assumes consistent allocation metadata and has
+no directory-cycle detector. Validate generated media with `fsck_msdos -n` or
+`fsck.fat -n` before use; the writable integration checks both boot images.
