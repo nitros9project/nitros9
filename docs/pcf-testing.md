@@ -146,3 +146,9 @@ of failed first allocations and links, advisory FSInfo failures, execution-mode
 delete selection, WRITE-only directory changes, readonly `SS.Opt`, and orphaned
 LFN checksums. `test-readdir.py` and `test-deldir.py` also exercise legacy raw
 RBF fallback, including dot/free filtering and extended metadata.
+
+`test-boot-fat32.py` models F$BtMem's returned page-rounded allocation and guards
+the kernel tables and system memory map. It exercises signature/layout/version,
+FAT-count and OS9BOOT attribute failures; reserved/high clusters; overflow in
+reserved/FAT/data addresses and cluster scaling; and the final VHD record versus
+an attempted wrapped read. Both CPU builds must remain exactly 464 bytes.
