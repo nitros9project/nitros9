@@ -58,6 +58,7 @@ class Machine:
         self.word(DESC + s['BT.Backend'], 0x80)
         self.m.load(DESC + 0x80, backend.encode()[:-1] + bytes([ord(backend[-1]) | 128]))
         self.word(self.config + s['BC.Port'], PORT)
+        self.word(STAT+s['V.PORT'],PORT)
         self.byte(self.config + s['BC.Flags'], int(readonly))
         self.word(self.config + s['BC.Ram'], RAM)
         self.word(self.config + s['BC.Blocks'], blocks)
@@ -263,6 +264,7 @@ class SDCard:
         self.program_error = False
         self.busy_forever = False
         self.init_forever = False
+        self.cmd0_busy = 0
         self.remove_at = None
         self.csd = bytearray(16)
         if hc:
@@ -322,7 +324,10 @@ class SDCard:
         command, arg = self.command[0] & 63, int.from_bytes(self.command[1:5], 'big')
         self.commands.append((command, arg))
         self.command.clear()
-        if command == 0:
+        if command == 0 and self.cmd0_busy:
+            self.cmd0_busy -= 1
+            self.responses.append(0)  # not yet in idle state after warm reset
+        elif command == 0:
             self.idle = True
             self.responses.append(1)
         elif command == 8:
@@ -408,6 +413,32 @@ def sd_tests(modules):
     p.request(count=2)
     p.error('Read', 'E$NotRdy')
     assert p.word(REQ + 14) == 1
+    # A single noisy card-detect sample must not require a reattachment.
+    p = Machine(modules, backend='llwbsdblk')
+    card = SDCard(p)
+    p.ok('Init')
+    card.absent = True
+    p.request()
+    p.error('Read', 'E$NotRdy')
+    card.absent = False
+    p.ok('Read')
+    p.ok('Term')
+    p = Machine(modules, backend='llwbsdblk')
+    card = SDCard(p)
+    card.cmd0_busy = 3
+    p.ok('Init')
+    assert len([command for command, _ in card.commands if command == 0]) == 4
+    p.ok('Term')
+    # A busy Term still disposes resources because IOMan discards statics.
+    p = Machine(modules)
+    p.ok('Init')
+    p.byte(STAT+p.s['BV.Lock'], 1)
+    p.error('Term', 'E$DevBsy')
+    assert not p.allocations and p.unlinks == 1
+    p = Machine(modules)
+    p.word(STAT+p.s['V.PORT'], PORT+1)
+    p.error('Init', 'E$BMode')
+    assert not p.allocations and not p.unlinks
     # Capacity corners and malformed/incompatible CSD layouts.
     for csize in (0, 1, 0x12345, 0x3FFFFF):
         p = Machine(modules, backend='llwbsdblk')

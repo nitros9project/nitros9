@@ -118,7 +118,7 @@ start               stx       <parmptr            save param ptr
                     bcc       L00D9               branch if ok
 * If error, try to open without write permissions
                     ldx       <parmptr            get saved param ptr
-                    lda       #READ.
+                    lda       #READ.    ; load A from #READ.
                     os9       I$Open
                     bcc       L00D9               branch if ok
 * If error, try to open as directory with read/write permissions
@@ -133,8 +133,8 @@ start               stx       <parmptr            save param ptr
                     bcs       L0114               branch if error
 L00D9               sta       <fpath              save off path
                     stx       <cmdperms           save updated parameter ptr
-                    lbsr      RequireRBF
-                    lbcs      AttrTypeError
+                    lbsr      RequireRBF ; call helper RequireRBF
+                    lbcs      AttrTypeError ; branch on carry or error AttrTypeError
                     lda       <fpath              get path in A
                     ldb       #SS.FD              we want a file descriptor sector
                     leax      fdesc,u             point to buffer
@@ -301,12 +301,12 @@ L0278               eorb      <onOrOff            XOR with onOrOff
 OptErr              coma                          set carry
                     puls      pc,y,x              pull registers and return
 
-AttrTypeError       pshs      b,cc
-                    lda       <fpath
-                    os9       I$Close
-                    puls      b,cc
-                    os9       F$Exit
-                    use       rbfguard.asm
+AttrTypeError       pshs      b,cc      ; preserve b,cc on stack
+                    lda       <fpath    ; load A from <fpath
+                    os9       I$Close   ; invoke OS-9 I$Close service
+                    puls      b,cc      ; restore b,cc from stack
+                    os9       F$Exit    ; invoke OS-9 F$Exit service
+                    use       rbfguard.asm ; include shared definitions or implementation
                     emod
 eom                 equ       *
                     end
