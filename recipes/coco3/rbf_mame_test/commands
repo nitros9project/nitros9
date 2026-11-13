@@ -1,0 +1,17 @@
+echo UNRELATED>/dd/keep.txt
+makdir /dd/tree/a/b
+makdir /dd/tree/empty
+echo ROOTFILE>/dd/tree/root.txt
+echo AFILE>/dd/tree/a/a.txt
+echo BFILE>/dd/tree/a/b/b.txt
+deldir /dd/tree </dd/cancel.in
+echo RBFCANCELDONE
+list /dd/tree/root.txt
+list /dd/tree/a/a.txt
+list /dd/tree/a/b/b.txt
+deldir /dd/tree </dd/delete.in
+echo SINGLE>/dd/single.txt
+deldir /dd/single.txt
+dir /dd
+list /dd/keep.txt
+echo RBFREGRESSIONPASS

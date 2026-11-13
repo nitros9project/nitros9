@@ -3981,10 +3981,18 @@ L26BC               rts
 ;
 ;---------------------------------------------
 L26BD               tfr       d,x
+                    lbsr      ProbeRBF  ; call helper ProbeRBF
+                    lbcs      L2728     ; branch on carry or error L2728
                     lda       $03,s
                     os9       I$Open
-                    bcs       L2728
-                    tfr       a,b
+                    lbcs      L2728     ; branch on carry or error L2728
+                    lbsr      RequireRBF ; call helper RequireRBF
+                    bcc       dcheckopenok@ ; branch with carry clear dcheckopenok@
+                    pshs      b,cc      ; preserve b,cc on stack
+                    os9       I$Close   ; invoke OS-9 I$Close service
+                    puls      b,cc      ; restore b,cc from stack
+                    os9       F$Exit    ; invoke OS-9 F$Exit service
+dcheckopenok@       tfr       a,b       ; transfer registers a,b
                     clra
                     rts
 
@@ -4160,6 +4168,38 @@ name                equ       *
                     fcs       /dcheck/
                     fcb       edition
 
+* Probe /device before trying its RBF raw-disk @ path.
+ProbeRBF            pshs      a,x,y     ; preserve a,x,y on stack
+                    tfr       x,y       ; transfer registers x,y
+probeloop@          lda       ,y        ; load A from ,y
+                    beq       probeok@  ; branch when equal or zero probeok@
+                    cmpa      #'@       ; compare A with #'@
+                    beq       proberaw@ ; branch when equal or zero proberaw@
+                    leay      1,y       ; point Y at 1,y
+                    bra       probeloop@ ; continue unconditionally probeloop@
+proberaw@           clr       ,y        ; clear ,y
+                    pshs      y         ; preserve y on stack
+                    lda       #DIR.+READ. ; load A from #DIR.+READ.
+                    os9       I$Open    ; invoke OS-9 I$Open service
+                    bcs       proberestore@ ; branch on carry or error proberestore@
+                    lbsr      RequireRBF ; call helper RequireRBF
+                    pshs      b,cc      ; preserve b,cc on stack
+                    os9       I$Close   ; invoke OS-9 I$Close service
+                    puls      b,cc      ; restore b,cc from stack
+proberestore@       puls      y         ; restore y from stack
+                    pshs      cc        ; preserve cc on stack
+                    lda       #'@       ; load A from #'@
+                    sta       ,y        ; save A in ,y
+                    puls      cc        ; restore cc from stack
+                    bcc       probedone@ ; branch with carry clear probedone@
+                    cmpb      #E$BTyp   ; compare B with #E$BTyp
+                    bne       probeerror@ ; branch when unequal or nonzero probeerror@
+                    os9       F$Exit    ; invoke OS-9 F$Exit service
+probeerror@         coma                ; complement A and set carry
+probedone@          puls      a,x,y,pc  ; restore a,x,y,pc from stack
+probeok@            clrb                ; clear accumulator B and carry
+                    puls      a,x,y,pc  ; restore a,x,y,pc from stack
+                    use       rbfguard.asm ; include shared definitions or implementation
                     emod
 eom                 equ       *
                     end

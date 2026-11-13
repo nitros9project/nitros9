@@ -804,6 +804,8 @@ l@                  sta       b,x       ; store the flag in the appropriate offs
                   IFEQ    BtPreld ; begin conditional assembly for BtPreld
 * BGP - Load bootfile and link to init. We no longer try to link to init first and then
 * call F$Boot. This saves bytes.
+* boot_fat32.asm uses $0800 scratch while S is still below $0800.
+* Keep this call before adopting D.SysStk ($0900); its stack page is not free later.
                     os9       F$Boot    ; load bootfile here +BGP+
                     bcs       KrnBadCantCrsh ; error, go crash +BGP+
                   ENDC
@@ -1239,6 +1241,26 @@ KrnActivateProcess  bsr       FAprocTarget ; activate next process
 * (or $D00 for the Wildbits) when assembled, as they have to always be in the
 * constant RAM page ($FE00-$FEFF for CoCo 3, $FD00-$FDFF for the Wildbits).
 
+* Offsets within the kernel module, mapped to $FE00..$FEFF by the CoCo GIME.
+CoCoCommonPage      equ       $0E00     fixed common-page start
+CoCoVectorTail6809  equ       $0E81     6809 tail leaves vectors ending at $FF00
+CoCoVectorTail6309  equ       $0E86     shorter 6309 task return permits a later tail
+CoCoVectorEnd       equ       $0F00     end of fixed interrupt vectors
+* CoCo task-return preparation runs before switching maps. Keep this prefix
+* outside the constant page, leaving room for every post-switch instruction.
+                  IFNE    coco3+coco3fpga   ; conditional assembly
+KrnFrcSysTask       clra                ; clear accumulator A and carry
+KrnSysProcDesc      ldx       <D.SysPrc ; load X from <D.SysPrc
+                    lbsr      TstImg    ; call helper TstImg
+                    orcc      #IntMasks ; set selected CC bits with #IntMasks
+                    sta       <D.SSTskN ; save A in <D.SSTskN
+                    beq       Fst2      ; branch when equal or zero Fst2
+                    ora       <D.TINIT  ; merge A with <D.TINIT
+                    sta       <D.TINIT  ; save A in <D.TINIT
+                    lbra      KrnRestoreTask ; continue unconditionally KrnRestoreTask
+                    fill      255,CoCoCommonPage-* ; pad to the required layout
+                  ENDC            ; conditional assembly
+
 * The default routine for D.SysIRQ.
 S.SysIRQ
                     lda       <D.SSTskN ; get the current task number
@@ -1270,6 +1292,7 @@ DoneIRQ             bcc       KrnReturn ; no error on IRQ, so exit
 KrnReturn           rti                 ; return
 
 * Return from a system call.
+                  IFEQ    coco3+coco3fpga   ; conditional assembly
 KrnFrcSysTask       clra                ; force system task # to 0 (system)
 KrnSysProcDesc      ldx       <D.SysPrc ; get the system process descriptor pointer
                     lbsr      TstImg    ; check the image, and F$SetTsk (preserves A)
@@ -1283,7 +1306,8 @@ KrnSysProcDesc      ldx       <D.SysPrc ; get the system process descriptor poin
                     ora       <D.TINIT  ; merge task bit into the shadow register
                     sta       <D.TINIT  ; update the shadow register
                   ENDC
-                    sta       >DAT.Task ; save to the DAT as well
+                  ENDC            ; conditional assembly
+KrnRestoreTask      sta       >DAT.Task ; save to the DAT as well
 Fst2                leas      ,u        ; put stack ptr into U
                     rti                 ; return
 
@@ -1460,6 +1484,17 @@ CrashDump           fill      255,KrnTail-*  ; pad up to the tail (computed at a
                   ENDC
 *]]] Wildbits PORT
 
+* CoCo vectors at $FEEE-$FEFF are fixed by REL/ROM. Keep the common-page
+* tail anchored when instructions above it shrink or grow. Negative fill
+* fails assembly if the kernel overruns the available space.
+                  IFNE    coco3+coco3fpga   ; conditional assembly
+                  IFNE    H6309   ; conditional assembly
+                    fill      255,CoCoVectorTail6309-* ; pad to the required layout
+                  ELSE            ; conditional assembly
+                    fill      255,CoCoVectorTail6809-* ; pad to the required layout
+                  ENDC            ; conditional assembly
+                  ENDC            ; conditional assembly
+
 * Execute FIRQ vector (called from $FEF4)
 FIRQVCT             ldx       #D.FIRQ   ; get the DP offset of the vector
                     bra       KrnFasterClrXxxx ; go execute it
@@ -1618,4 +1653,9 @@ SWIStack
                     bra       NMIVCT    ; nMI vector comes here
                     nop       ;         no operation placeholder
 
+                  IFNE    coco3+coco3fpga   ; conditional assembly
+                  IFNE    *-CoCoVectorEnd ; conditional assembly
+                    error     CoCo kernel vectors must end at $FF00
+                  ENDC            ; conditional assembly
+                  ENDC            ; conditional assembly
                     end

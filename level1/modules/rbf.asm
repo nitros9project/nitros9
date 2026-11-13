@@ -43,6 +43,7 @@
 
                     ifp1
                     use       defsfile
+                    use       readdir.d ; include shared definitions or implementation
                     endc
 
 rev                 set       $00
@@ -160,11 +161,11 @@ Creat83             std       $0B,s               save segment size
                     ldd       PD.DCP+2,y
                     std       PD.CP+2,y
                     endc
-                    lbsr      L0957               move entry into sector buffer
+                    lbsr      ReadDirectoryEntry ; move entry into sector buffer
                     bcs       CreatB5
 CreatAC             tst       ,x                  file exist here already?
                     beq       CreatC7             no, found empty slot, skip ahead
-                    lbsr      L0942               point to next entry
+                    lbsr      NextDirectoryEntry ; point to next entry
                     bcc       CreatAC             try again
 CreatB5             cmpb      #E$EOF              end of directory?
                     bne       Creat7C             no, return error
@@ -173,7 +174,7 @@ CreatB5             cmpb      #E$EOF              end of directory?
                     lbsr      Writ599             add it to size of directory
                     bcs       Creat7C             out of alloc?
                     lbsr      MDir263             set file size in file descriptor
-                    lbsr      L0957               read in a directory sector
+                    lbsr      ReadDirectoryEntry ; read in a directory sector
 CreatC7             leau      ,x                  point to directory entry
                     lbsr      Creat169            clear it out
                     puls      x                   restore pathname pointer
@@ -451,7 +452,7 @@ MDir273             lbra      L11FD
 Close               clra
                     tst       PD.CNT,y            any open paths?
                     bne       Clos29C             yes, return
-                    lbsr      L1237               flush current sector of needed
+                    lbsr      FlushSectorBuffer ; flush current sector of needed
                     bcs       Rt100Mem            error, skip ahead
                     ldb       PD.MOD,y            get access mode
                     bitb      #WRITE.             is it write?
@@ -654,7 +655,7 @@ L0304
                     std       PD.SSZ+1,y
                     lbsr      ClrFBits            delete a segment
 L032A               bcs       Clos2A02
-                    lbsr      L1237               flush the sector
+                    lbsr      FlushSectorBuffer ; flush the sector
                     lbsr      L0A90
                     lda       PD.DFD,y
                     sta       PD.FD,y
@@ -674,7 +675,7 @@ L032A               bcs       Clos2A02
                     ldd       PD.DCP+2,y
                     std       PD.CP+2,y
                     endc
-                    lbsr      L0957               read in the directory sector
+                    lbsr      ReadDirectoryEntry ; read in the directory sector
                     bcs       Clos2A02
                     clr       ,x                  clear first byte of filename in directory entry
                     lbsr      L1205               flush the sector to disk
@@ -701,7 +702,7 @@ Seek                ldb       PD.SMF,y            get state flags
                     lda       R$X,u
                     sbca      PD.CP,y
                     beq       Seek41B             no need to get another sector, skip ahead
-Seek412             lbsr      L1237               flush the current sector to disk
+Seek412             lbsr      FlushSectorBuffer ; flush the current sector to disk
                     bcs       Seek41F
 Seek417             ldd       R$X,u               get & set new file pointer
                     std       PD.CP,y
@@ -738,7 +739,7 @@ RdLn430             leay      1,y                 go up one byte
                     bne       RdLn430             until done one sector, at least
 RdLn439
                     ldx       6,s                 get old U
-                    bsr       RdLn49B             move bytes from the system to user
+                    bsr       CopyToCaller ; move bytes from the system to user
                     sty       $0A,s               save Y on-stack, above calling routine????
                     puls      u,y,x,b,a           restore registers
                     ldd       $02,s               get old saved Y from above
@@ -790,7 +791,7 @@ RdLn494             comb                          set carry for error
                     ldb       #E$EOF              get error code
 RdLn497             leas      $02,s               purge length off stack
                     rts
-RdLn49B             lbra      Writ5CB
+CopyToCaller        lbra      Writ5CB   ; continue unconditionally Writ5CB
 
 *
 * I$Read Entry Point
@@ -809,7 +810,7 @@ Read4AF
                     pshs      u,y,x,b,a           save data on the stack
                     exg       x,u
                     tfr       d,y
-                    bsr       RdLn49B             move bytes from system to user
+                    bsr       CopyToCaller ; move bytes from system to user
                     puls      u,y,x,b,a           restore registers
                     leax      d,x                 point to end of data copied?
 Read4BB             rts
@@ -860,7 +861,7 @@ Read50C             pshs      b,a                 save
                     addb      PD.CP+3,y           add it to current pointer
                     stb       PD.CP+3,y           save new file position
                     bne       Read530             didn't grab whole sector, skip ahead
-                    lbsr      L1237               flush the sector
+                    lbsr      FlushSectorBuffer ; flush the sector
                     inc       PD.CP+2,y           add
                     bne       Read52E
                     inc       PD.CP+1,y
@@ -1003,8 +1004,9 @@ L051B               puls      pc,u,y,x
 *        B = errcode
 *
 GetStat             ldb       R$B,u               get function code
-                    cmpb      #SS.Opt
                     beq       Gst5FFX             it's SS.Opt, go process
+                    cmpb      #SS.ReadDir ; compare B with #SS.ReadDir
+                    lbeq      RDRead    ; branch when equal or zero RDRead
                     cmpb      #SS.EOF             EOF check?
                     bne       Gst5EB              no, skip ahead
                     clr       R$B,u               default to no EOF
@@ -1075,11 +1077,11 @@ Gst620              ldx       R$X,u               get pointer
 *        R$U = LSW of LSN
 Gst627              cmpb      #SS.FDInf           SS.FDInf?
                     bne       Gst640              no, let driver handle it
-                    lbsr      L1237               check for sector flush
+                    lbsr      FlushSectorBuffer ; check for sector flush
                     bcs       Gst5FF
                     ldb       R$Y,u               get MSB of sector #
                     ldx       R$U,u               get LSW of sector #
-                    lbsr      L113A               read the sector
+                    lbsr      ReadCurrentSector ; read the sector
                     bcs       Gst5FF              error, return
                     ldu       PD.RGS,y            get register stack pointer
                     ldd       R$Y,u               get length of data to move
@@ -1314,7 +1316,7 @@ Sst83F              lbsr      L1110               read in LSN0
 Sst861              stx       $04,s               save pointer to pathname
                     stx       $08,s
 
-Sst865              lbsr      L1237               flush sector buffer
+Sst865              lbsr      FlushSectorBuffer ; flush sector buffer
                     lbcs      L0915               error, exit
                     lda       ,s                  get last character of pathname
                     anda      #$7F                mask off high bit
@@ -1343,12 +1345,12 @@ Sst87B              lbsr      L0A2A               check if directory is busy
                     bcs       L090D               error in pathname, return
                     lbsr      ChkEnd              is the name followed by a legal character?
                     bcs       L090D               no, return the error
-                    lbsr      L0957
+                    lbsr      ReadDirectoryEntry ; call helper ReadDirectoryEntry
                     bra       L08C1
 
 * Scan diretory for name
 L08BC               bsr       L0918               get file descriptor
-L08BE               bsr       L0942
+L08BE               bsr       NextDirectoryEntry ; call helper NextDirectoryEntry
 L08C1               bcs       L090D               error,
                     tst       ,x                  filename exists?
                     beq       L08BC               no, get next entry
@@ -1420,17 +1422,17 @@ L0926               pshs      d
 L0940               puls      pc,b,a
 
 * Move to next directory entry
-L0942               ldb       PD.CP+3,y           get current byte pointer
+NextDirectoryEntry  ldb       PD.CP+3,y ; get current byte pointer
                     addb      #DIR.SZ             add in diretory entry size
                     stb       PD.CP+3,y           save it back
-                    bcc       L0957               didn't wrap, skip ahead (need new sector)
-                    lbsr      L1237               check for sector flush
+                    bcc       ReadDirectoryEntry ; didn't wrap, skip ahead (need new sector)
+                    lbsr      FlushSectorBuffer ; check for sector flush
                     inc       PD.CP+2,y
-                    bne       L0957
+                    bne       ReadDirectoryEntry ; branch when unequal or nonzero ReadDirectoryEntry
                     inc       PD.CP+1,y
-                    bne       L0957
+                    bne       ReadDirectoryEntry ; branch when unequal or nonzero ReadDirectoryEntry
                     inc       PD.CP,y
-L0957               ldd       #DIR.SZ             get directory entry size
+ReadDirectoryEntry  ldd       #DIR.SZ   ; get directory entry size
                     lbsr      RdLn473             end of directory?
                     bcs       L097E               yes, return
                     lda       PD.SMF,y            get state flags
@@ -2157,7 +2159,7 @@ L1012               bsr       L1036               flush the sector, and OWN the 
 L1033               coma
 L1034               puls      pc,u,y,x,a
 
-L1036               lbsr      L1237               flush the sector to disk
+L1036               lbsr      FlushSectorBuffer ; flush the sector to disk
                     bra       L1043               skip ahead
 
 L103B               lbsr      L0C56               wakeup the process
@@ -2216,7 +2218,7 @@ L108F               puls      pc,cc               restore error status & return
 L1091               clra                          clear MSB of LSW to logical sector #
                     tfr       d,x                 move to proper register
                     clrb                          clear MSB of logical sector #
-                    lbra      L113A               go read the sector
+                    lbra      ReadCurrentSector ; go read the sector
 
 *** TODO(strick): BEGIN: The following are not reached?
                     pshs      u,x
@@ -2306,11 +2308,11 @@ L110E               puls      pc,u
 * Read LSN0 from drive
 * Entry: Y=Path descriptor pointer
 L1110               pshs      x,b                 preserve regs used
-                    lbsr      L1237               flush sector buffer
+                    lbsr      FlushSectorBuffer ; flush sector buffer
                     bcs       L111F               error, return
                     clrb                          get LSN
                     ldx       #$0000
-                    bsr       L113A               read the sector
+                    bsr       ReadCurrentSector ; read the sector
                     bcc       L1121               no error, return
 L111F               stb       ,s                  save error code
 L1121               puls      pc,x,b              restore & return
@@ -2325,7 +2327,7 @@ RdFlDscr
                     bitb      #FDBUF
                     endc
                     bne       L10B0               yes, return no error
-                    lbsr      L1237               flush any sector here
+                    lbsr      FlushSectorBuffer ; flush any sector here
                     bcs       L10B1               error, return
                     ifne      UNTESTED_H6309
                     oim       #FDBUF,PD.SMF,y
@@ -2337,7 +2339,7 @@ RdFlDscr
                     endc
                     ldb       PD.FD,y             get MSB of logical sector
                     ldx       PD.FD+1,y           get LSW of logical sector
-L113A               lda       #D$READ             get read offset
+ReadCurrentSector   lda       #D$READ   ; get read offset
 * Send command to device driver
 * Entry: A=Driver Command offset
 *        B=MSB of logical sector #
@@ -2436,7 +2438,7 @@ L1220               ldd       PD.CP+1,y           get current logical sector loa
 
 * Check if sector buffer needs to be flushed to disk
 * Entry: Y=Path descriptor pointer
-L1237               clrb                          clear carry
+FlushSectorBuffer   clrb                ; clear carry
                     pshs      u,x                 preserve regs
                     ldb       PD.SMF,y            get state flags
                     andb      #(BufBusy!FDBUF!SINBUF) anything in buffer?
@@ -2456,10 +2458,10 @@ L1254               puls      pc,u,x              restore & return
 L1256               pshs      u,x
                     lbsr      L1098
                     bcs       L12C6
-                    bsr       L1237
+                    bsr       FlushSectorBuffer ; call helper FlushSectorBuffer
                     bcs       L12C6
                     bsr       L1220
-                    lbsr      L113A
+                    lbsr      ReadCurrentSector ; call helper ReadCurrentSector
                     bcs       L12C6
                     lda       PD.SMF,y
                     ora       #(BufBusy!SINBUF)
@@ -2511,7 +2513,7 @@ Rename              ldd       R$Y,u
                     tst       PE.Lock,x
                     lbne      RNBusy
                     endc
-                    lbsr      L1237
+                    lbsr      FlushSectorBuffer ; call helper FlushSectorBuffer
                     lbcs      RNDone
                     ifgt      Level-1
                     clra
@@ -2531,7 +2533,7 @@ Rename              ldd       R$Y,u
                     lbsr      Open1CE             also invalidates the buffer
                     ldd       #64
                     std       PD.CP+2,y
-                    lbsr      L0957
+                    lbsr      ReadDirectoryEntry ; call helper ReadDirectoryEntry
 RNScan              bcs       RNEndScan
                     tst       ,x
                     beq       RNNext
@@ -2547,19 +2549,19 @@ RNScan              bcs       RNEndScan
 RNCheckNew          leau      RNNew,s
                     lbsr      RNCompare
                     bcc       RNExists
-RNNext              lbsr      L0942
+RNNext              lbsr      NextDirectoryEntry ; call helper NextDirectoryEntry
                     bra       RNScan
 RNEndScan           cmpb      #E$EOF
                     bne       RNError
                     tst       RNSeen,s
                     beq       RNMissing
-                    lbsr      L1237
+                    lbsr      FlushSectorBuffer ; call helper FlushSectorBuffer
                     bcs       RNCleanup
                     ldd       RNFound,s
                     std       PD.CP,y
                     ldd       RNFound+2,s
                     std       PD.CP+2,y
-                    lbsr      L0957
+                    lbsr      ReadDirectoryEntry ; call helper ReadDirectoryEntry
                     bcs       RNCleanup
 * The validated field already has its final high bit and zero padding.
 * Copy all 29 name bytes without touching the three-byte FD pointer.
@@ -2577,7 +2579,7 @@ RNMissing           ldb       #E$PNNF
                     bra       RNError
 RNError             orcc      #1
 RNCleanup           pshs      b,cc
-                    lbsr      L1237
+                    lbsr      FlushSectorBuffer ; call helper FlushSectorBuffer
                     ifgt      Level-1
                     pshs      y
                     ldy       PD.Exten,y
@@ -2598,6 +2600,8 @@ RNBusy              ldb       #E$Share
                     endc
 RN.RBF              equ       1
                     use       rename-name.d
+
+                    use       ../level1/modules/rbf-readdir.asm ; include shared definitions or implementation
 
                     emod
 eom                 equ       *

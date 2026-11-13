@@ -1,0 +1,3 @@
+mdir
+echo FAT32STARTUP: /dd and commands are on FAT32
+echo FAT32STARTUPDONE

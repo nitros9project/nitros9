@@ -1,0 +1,61 @@
+dir /pc0
+echo FIRST>/pc0/new.txt
+echo SECOND>+/pc0/new.txt
+list /pc0/new.txt
+copy /pc0/frag.bin /pc0/copy.bin
+cmp /pc0/frag.bin /pc0/copy.bin
+copy /pc0/frag.bin /pc0/gone.bin
+del /pc0/gone.bin
+echo NESTEDWRITE>/pc0/subdir/new.txt
+list /pc0/subdir/new.txt
+echo PCFGUARDSBEGIN
+attr /pc0/new.txt
+dcheck /pc0
+pxd
+pwd
+echo PCFGUARDSEND
+dir /pc0
+pcfshare
+pcfrmdir
+makdir /pc0/empty
+del /dd/empty
+makdir /pc0/top/inner
+echo PCFNESTED>/pc0/top/inner/keep.txt
+chd /pc0/top/inner
+chd ..
+dir
+chd /dd
+list /dd/top/inner/keep.txt
+makdir /pc0/tree/a/b
+makdir /pc0/tree/empty
+echo ROOTFILE>/pc0/tree/root.txt
+echo AFILE>/pc0/tree/a/a.txt
+echo BFILE>/pc0/tree/a/b/b.txt
+echo PCFDELDENYBEGIN
+deldir /pc0/tree </dd/cancel.in
+echo PCFDELDENYEND
+list /pc0/tree/root.txt
+list /pc0/tree/a/a.txt
+list /pc0/tree/a/b/b.txt
+deldir /dd/tree </dd/delete.in
+echo SINGLE>/pc0/single.txt
+deldir /pc0/single.txt
+dir /pc0
+list /pc0/top/inner/keep.txt
+list /pc0/subdir/nest.txt
+echo PCFRECURSEDONE
+makdir /pc0/rntest/child
+echo HELDDATA>/pc0/rntest/held.txt
+echo RENAMEKEEP>/pc0/rntest/child/keep.txt
+pcfren
+rename /pc0/rntest/held.txt final.txt
+rename /pc0/rntest/child finaldir
+list /dd/rntest/final.txt
+list /dd/rntest/finaldir/keep.txt
+chd /pc0/rntest/finaldir
+chd ..
+list final.txt
+chd /dd
+dir /dd/rntest
+echo PCFRENAMEDONE
+echo PCFWRITEDONE
