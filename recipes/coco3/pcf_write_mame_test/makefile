@@ -25,7 +25,7 @@ check-random: prepare
 	$(PYTHON) $(NITROS9DIR)/scripts/test-pcf-random.py --image $(ROOT_TEST)/fat32-root.vhd --output .random-cpu --steps $(RANDOM_CPU_STEPS) --seeds $(RANDOM_CPU_SEEDS) --fsck "$(FAT_CHECK)"
 
 # Run both real guest integrations from one recipe.
-check-all: check check-rename check-random
+check-all: check check-rename check-review check-random
 	$(MAKE) -C ../rbf_mame_test check
 
 demo-all: demo
@@ -39,3 +39,10 @@ check-rename:
 	$(PYTHON) $(NITROS9DIR)/scripts/test-pcf-rename.py
 	$(PYTHON) $(NITROS9DIR)/scripts/test-rename.py
 .PHONY: check-rename
+
+# Review regressions cover recoverable media failures and parent timestamp caches.
+check-review:
+	$(PYTHON) $(NITROS9DIR)/scripts/test-pcf-review.py
+	$(PYTHON) $(NITROS9DIR)/scripts/test-pcf-parent-time.py
+	$(PYTHON) $(NITROS9DIR)/scripts/test-boot-fat32.py
+.PHONY: check-review

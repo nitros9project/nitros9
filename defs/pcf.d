@@ -72,6 +72,7 @@ F.Sectors           rmb       1         ; reserve storage
 F.Time              rmb       6         ; reserve storage
 F.Deleting          rmb       1                   internal open accepts either object type
 F.Child             rmb       4                   unpublished directory cluster
+F.Parent            rmb       4         ; containing directory cluster for child mutations
                   IFGT    .-256   ; conditional assembly
                     error     PCF field helper offsets exceed one byte
                   ENDC            ; conditional assembly

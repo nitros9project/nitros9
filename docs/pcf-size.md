@@ -1,21 +1,28 @@
 # pcf size audit
 
-Current modules after review fixes: **7,059 bytes (Level 2)** and
-**7,050 bytes (Level 1)** for both CPUs. Correctness checks, publication rollback,
-checksum validation and circular allocation add **368 bytes** per level relative
-to the last size pass. Per-path workspace falls from **2,048 to 1,792 bytes**
-by removing the unused gap before the two sector buffers. All thirteen ABI
-slots remain three bytes.
+Current modules after all software review fixes: **7,500 bytes (Level 2)** and
+**7,491 bytes (Level 1)** for both CPUs. Parent-directory timestamp updates and
+cache coherence add **441 bytes** per level to the preceding review fix.
+Per-path workspace remains **1,792 bytes**: the parent-cluster field fits in the
+existing gap, and timestamp traversal reuses the path's record/sector buffers.
+All thirteen ABI slots remain three bytes.
 
-Compared with the measured **5,454-byte Level 2 RBF**, pcf is **1,605 bytes
-(29.4%) larger**, excluding drivers. The section reporter identifies the new
-rollback/linking helpers separately. These figures supersede the historical
-measurements below; the old passes remain as an audit trail.
+The earlier review fixes added 368 bytes per level relative to the last size
+pass and reduced per-path storage from 2,048 to 1,792 bytes. Together, the review
+work adds **809 bytes** to each pcf module. Compared with the measured
+**5,454-byte Level 2 RBF**, current pcf is **2,046 bytes (37.5%) larger**, excluding
+drivers. The following historical measurements remain as an audit trail.
 
-Allocation now resumes after the path's preceding allocation and wraps once;
-appending preserves the cached chain cursor. FAT years now saturate at 2107
-rather than wrapping. Timestamp vector expectations reflect this deliberate
-review correction. Other timestamp defaults and half-second behavior remain.
+The VHD booter remains exactly **464 bytes** on both CPUs with signature,
+FAT32-layout/version, FAT-count, file-type, reserved-cluster and address-overflow
+checks. Space comes from direct page-aligned DMA, saved size/image values on
+the private stack, shared error unwinding, normalized FAT shift counts and
+nearby routine placement. No root/file fragmentation support was removed.
+
+Allocation resumes after the path's preceding allocation and wraps once;
+appending preserves the cached chain cursor. FAT years saturate at 2107.
+Parent timestamp maintenance adds synchronous lookup/write work; no throughput
+improvement is claimed. Other timestamp defaults and half-second behavior remain.
 
 ## Timestamp packing, cluster encoding and position updates
 

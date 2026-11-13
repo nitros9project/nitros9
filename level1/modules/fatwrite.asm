@@ -548,7 +548,9 @@ CreateEntry         lbsr      Writable  ; call helper Writable
                     lda       F.Creating,u ; load A from F.Creating,u
                     cmpa      #2        ; compare A with #2
                     lbne      AccessError ; branch when unequal or nonzero AccessError
-createkind@         clr       F.WalkValid,u ; clear F.WalkValid,u
+createkind@         ldd       #F.Start*256+F.Parent ; retain the directory receiving this child
+                    lbsr      CopyVal   ; remember parent before AdoptEntry
+                    clr       F.WalkValid,u ; clear F.WalkValid,u
                     clra                ; clear accumulator A and carry
                     clrb                ; clear accumulator B and carry
                     std       F.Scan,u  ; save D in F.Scan,u
@@ -632,6 +634,10 @@ createdone@         clr       F.Creating,u ; clear F.Creating,u
                     leax      F.Entry,u ; point X at F.Entry,u
                     lbsr      AdoptEntry ; call helper AdoptEntry
                     bcs       createret@ ; branch on carry or error createret@
+                    lda       #F.Parent-128 ; containing directory identity
+                    lbsr      LoadField ; select the parent timestamp
+                    lbsr      TouchDirectory ; update parent after successful publication
+                    bcs       createret@ ; propagate parent metadata errors
                     lbsr      Flush     ; call helper Flush
 createret@          rts                 ; return to caller
 createbad@          coma                ; complement A and set carry
@@ -846,6 +852,10 @@ deletechecked@      bcs       deletefree@ ; branch on carry or error deletefree@
                     bcs       deletefree@ ; branch on carry or error deletefree@
                     lbsr      FreeChain ; call helper FreeChain
                     bcs       deletefree@ ; branch on carry or error deletefree@
+                    lda       #F.Parent-128 ; parent retained by Lookup
+                    lbsr      LoadField ; select containing directory
+                    lbsr      TouchDirectory ; update parent after successful deletion
+                    bcs       deletefree@ ; propagate parent metadata errors
                     lbsr      Flush     ; call helper Flush
 deletefree@         pshs      b,cc      ; preserve b,cc on stack
                     lbsr      FreePath  ; call helper FreePath
@@ -1242,7 +1252,8 @@ refok@              clrb                ; clear accumulator B and carry
 * SS.Rename: two validated 30-byte basenames, on a writable parent directory.
 * F.Record stages the parent's identity (40+6 bytes), source location (6),
 * and canonical new name (11). F.Pos is never changed. No extra workspace.
-RenameEntry         lda       PD.MOD,y  ; load A from PD.MOD,y
+RenameEntry         clr       F.Record+63,u ; only a committed rename touches its parent
+                    lda       PD.MOD,y  ; load A from PD.MOD,y
                     anda      #DIR.+WRITE. ; mask A with #DIR.+WRITE.
                     cmpa      #DIR.+WRITE. ; compare A with #DIR.+WRITE.
                     lbne      renameaccess@ ; branch when unequal or nonzero renameaccess@
@@ -1353,7 +1364,8 @@ renamestore@        lda       ,y+       ; load A from ,y+
                     puls      y         ; restore y from stack
                     lbsr      WriteData ; call helper WriteData
                     bcs       renamerestore@ ; branch on carry or error renamerestore@
-                    lbsr      Flush     ; call helper Flush
+                    inc       F.Record+63,u ; distinguish actual rename from case-only no-op
+                    clrb                ; restore parent identity before timestamp update
                     bra       renamerestore@ ; continue unconditionally renamerestore@
 renameerror@        coma                ; complement A and set carry
 renamerestore@      pshs      b,cc,y    ; preserve b,cc,y on stack
@@ -1366,6 +1378,14 @@ renamerestore@      pshs      b,cc,y    ; preserve b,cc,y on stack
                     bsr       CopyBytes ; call helper CopyBytes
                     clr       F.WalkValid,u ; clear F.WalkValid,u
                     puls      b,cc,y    ; restore b,cc,y from stack
+                    lbcs      SetStatReturn ; rejected renames never write parent metadata
+                    tst       F.Record+63,u ; case-only rename is a zero-write no-op
+                    lbeq      SetStatReturn ; retain no-op behavior
+                    lda       #F.Start-128 ; restored parent directory cluster
+                    lbsr      LoadField ; select the directory whose entry changed
+                    lbsr      TouchDirectory ; stamp the parent and its live path caches
+                    lbcs      SetStatReturn ; propagate parent metadata errors
+                    lbsr      Flush     ; complete both name and timestamp writes
                     lbra      SetStatReturn ; continue unconditionally SetStatReturn
 renameaccess@       ldb       #E$FNA    ; load B from #E$FNA
                     coma                ; complement A and set carry
@@ -1423,3 +1443,144 @@ linkret@            rts                 ; return
 ReclaimNew          ldd       #F.New*256+F.Saved ; unpublished allocation
                     lbsr      CopyVal   ; select the allocated cluster
                     lbra      FreeChain ; best-effort reclamation
+
+* Val identifies a directory whose children changed. FAT32 root has no parent
+* entry to timestamp. For other directories, follow '..' and find the directory
+* by cluster in its parent's entries; this also works for relative cwd paths and
+* renamed/LFN-backed directories without needing a stored pathname.
+* Record[0..63] belongs to rename; [64..135] is private scratch here.
+TouchDirectory      pshs      x,y       ; preserve caller pointers before comparisons
+                    leax      F.Root,u  ; the root has no timestamp-bearing entry
+                    lbsr      CompareVal ; compare target cluster with root
+                    lbeq      touchroot@ ; root mutations need no extra I/O
+                    leax      F.Record+128,u ; stable target across directory lookup
+                    lbsr      StoreVal  ; retain target directory cluster
+                    leax      F.Start,u ; current first cluster, size and entry
+                    leay      F.Record+64,u ; snapshot without disturbing rename
+                    ldb       #40       ; complete active identity
+                    lbsr      CopyBytes ; preserve active file or directory
+                    leax      F.DirLBA,u ; original entry location
+                    ldb       #6        ; sector and offset
+                    lbsr      CopyBytes ; snapshot location
+                    leax      F.Parent,u ; original containing-directory cluster
+                    ldb       #4        ; full-width cluster
+                    lbsr      CopyBytes ; preserve deletion/create context
+                    leax      F.Name,u  ; original short-name scratch
+                    ldb       #11       ; padded alias
+                    lbsr      CopyBytes ; preserve caller name
+                    lda       F.HasLFN,u ; retain the active alias protection flag
+                    sta       F.Record+125,u ; final byte of the identity snapshot
+                    leax      F.Record+128,u ; target directory
+                    lbsr      LoadVal   ; select target
+                    lda       #F.Start-128 ; traverse target directory
+                    lbsr      StoreField ; set temporary start cluster
+                    leax      F.Name,u  ; request the parent link
+                    ldd       #$2E2E    ; exact '..' basename
+                    std       ,x++      ; first two name bytes
+                    lda       #C$SPAC   ; padded short-name format
+                    ldb       #9        ; remaining alias bytes
+touchname@          sta       ,x+       ; pad parent alias
+                    decb                ; count padding
+                    bne       touchname@ ; finish alias
+                    ldy       2,s       ; restore path descriptor after scratch copies
+                    lbsr      Lookup    ; adopt the directory containing the target
+                    lbcs      touchrestore@ ; restore identity after lookup failure
+                    clra                ; begin parent directory scan at byte zero
+                    clrb                ; clear low accumulator
+                    std       F.Scan,u  ; high scan word
+                    std       F.Scan+2,u ; low scan word
+                    clr       F.WalkValid,u ; new directory chain
+touchscan@          ldd       #F.Scan*256+F.Offset ; next physical directory record
+                    lbsr      CopyVal   ; set Locate operand
+                    lbsr      Locate    ; fetch slot using normal chain validation
+                    bcs       touchrestore@ ; return media or chain failure
+                    lda       ,x        ; check directory end marker
+                    beq       touchbad@ ; target must remain linked from its parent
+                    cmpa      #$E5      ; deleted record
+                    beq       touchnext@ ; skip free slot
+                    cmpa      #'.       ; dot entries do not name the target child
+                    beq       touchnext@ ; skip dot links
+                    lda       11,x      ; fat attributes
+                    anda      #$18      ; directory or volume-label bits
+                    cmpa      #$10      ; accept directories only
+                    bne       touchnext@ ; skip files, labels and LFN slots
+                    lda       21,x      ; high cluster word, little endian
+                    anda      #15       ; fat32 reserved top bits
+                    ldb       20,x      ; remaining high-word byte
+                    cmpd      F.Record+128,u ; target high word
+                    bne       touchnext@ ; another directory
+                    lda       27,x      ; low cluster word, little endian
+                    ldb       26,x      ; remaining low-word byte
+                    cmpd      F.Record+130,u ; target low word
+                    beq       touchfound@ ; located the target's real entry
+touchnext@          lbsr      ScanNext  ; advance by one FAT directory slot
+                    bcc       touchscan@ ; continue validated scan
+                    bra       touchrestore@ ; propagate arithmetic failure
+touchbad@           ldb       #E$BTyp   ; missing parent link is corrupt media
+                    coma                ; set error carry
+                    bra       touchrestore@ ; restore active identity
+touchfound@         pshs      x         ; preserve the real on-disk slot
+                    leay      F.Entry,u ; reuse normal timestamp encoder
+                    ldb       #32       ; complete directory metadata
+                    lbsr      CopyBytes ; copy directory entry to scratch
+                    lbsr      Stamp     ; encode current kernel clock
+                    puls      x         ; original disk entry pointer
+                    ldd       F.Entry+22,u ; fat modification time
+                    std       22,x      ; update time only
+                    std       F.Record+132,u ; retain for open directory caches
+                    ldd       F.Entry+24,u ; fat modification date
+                    std       24,x      ; preserve all other metadata
+                    std       F.Record+134,u ; cache update value
+                    ldy       2,s       ; restore path descriptor after entry encoding
+                    lbsr      WriteData ; commit the parent directory sector
+touchrestore@       pshs      b,cc      ; retain metadata operation result
+                    leax      F.Record+64,u ; saved current identity
+                    leay      F.Start,u ; first cluster, size and entry
+                    ldb       #40       ; complete identity length
+                    lbsr      CopyBytes ; restore active path
+                    leay      F.DirLBA,u ; saved sector and entry offset
+                    ldb       #6        ; location length
+                    lbsr      CopyBytes ; restore original location
+                    leay      F.Parent,u ; original parent cluster
+                    ldb       #4        ; parent width
+                    lbsr      CopyBytes ; restore mutation context
+                    leay      F.Name,u  ; original name scratch
+                    ldb       #11       ; alias width
+                    lbsr      CopyBytes ; restore short name
+                    lda       F.Record+125,u ; original alias protection state
+                    sta       F.HasLFN,u ; restore permission metadata
+                    clr       F.WalkValid,u ; scan used a different directory chain
+                    puls      b,cc      ; recover original result
+                    bcs       touchreturn@ ; failed metadata I/O does not refresh caches
+                    bsr       TouchDirectoryCaches ; keep open directory FD results coherent
+touchreturn@        puls      x,y,pc    ; preserve caller pointers and carry
+touchroot@          clrb                ; root has no stored timestamp
+                    puls      x,y,pc    ; return without I/O
+* Directory readers can coexist with mutations. Update only matching physical
+* volume/cluster caches, after restoring the caller's own entry identity.
+TouchDirectoryCaches ldx       F.Owner,u ; caller path descriptor
+                    ldx       PD.DEV,x  ; physical device
+                    ldx       V$STAT,x  ; shared statics across aliases
+                    ldx       BV.FMPaths,x ; live path list
+touchcache@         cmpx      #0        ; list terminator
+                    beq       touchcacheok@ ; complete cache refresh
+                    ldd       F.Base,u  ; distinguish partitions on the device
+                    cmpd      F.Base,x  ; partition high word
+                    bne       touchcachenext@ ; another mounted volume
+                    ldd       F.Base+2,u ; partition low word
+                    cmpd      F.Base+2,x ; complete partition match
+                    bne       touchcachenext@ ; another mounted volume
+                    ldd       F.Record+128,u ; changed directory cluster
+                    cmpd      F.Start,x ; cached high cluster word
+                    bne       touchcachenext@ ; another object
+                    ldd       F.Record+130,u ; changed low cluster word
+                    cmpd      F.Start+2,x ; cached low cluster word
+                    bne       touchcachenext@ ; another object
+                    ldd       F.Record+132,u ; newly committed time
+                    std       F.Entry+22,x ; update cached modification time
+                    ldd       F.Record+134,u ; newly committed date
+                    std       F.Entry+24,x ; update cached modification date
+touchcachenext@     ldx       F.NextPath,x ; next open path
+                    bra       touchcache@ ; examine the next cache
+touchcacheok@       clrb                ; successful synchronous refresh
+                    rts                 ; return
