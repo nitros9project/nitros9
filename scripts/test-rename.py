@@ -146,7 +146,9 @@ def command_tests(binary,s):
                 opens.append((name.decode(),c.accu_a.value));c.accu_a.set(3);c.C=0
             elif op==s['I$SetStt']:
                 assert c.accu_a.value==3 and c.accu_b.value==s['SS.Rename'] and c.index_y.value==60
-                packets.append(get(c.index_x.value,60));c.accu_b.set(stat_error);c.C=int(stat_error!=0)
+                packets.append(get(c.index_x.value,60))
+                if stat_error:c.accu_b.set(stat_error)
+                c.C=int(stat_error!=0)
             elif op==s['I$Close']:
                 closes.append(c.accu_a.value);c.accu_b.set(close_error);c.C=int(close_error!=0)
             else:raise AssertionError(('unexpected command syscall',op))

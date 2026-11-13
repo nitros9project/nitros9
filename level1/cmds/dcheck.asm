@@ -3981,10 +3981,18 @@ L26BC               rts
 ;
 ;---------------------------------------------
 L26BD               tfr       d,x
+                    lbsr      ProbeRBF
+                    lbcs      L2728
                     lda       $03,s
                     os9       I$Open
-                    bcs       L2728
-                    tfr       a,b
+                    lbcs      L2728
+                    lbsr      RequireRBF
+                    bcc       dcheckopenok@
+                    pshs      b,cc
+                    os9       I$Close
+                    puls      b,cc
+                    os9       F$Exit
+dcheckopenok@        tfr       a,b
                     clra
                     rts
 
@@ -4160,6 +4168,38 @@ name                equ       *
                     fcs       /dcheck/
                     fcb       edition
 
+* Probe /device before trying its RBF raw-disk @ path.
+ProbeRBF            pshs      a,x,y
+                    tfr       x,y
+probeloop@          lda       ,y
+                    beq       probeok@
+                    cmpa      #'@
+                    beq       proberaw@
+                    leay      1,y
+                    bra       probeloop@
+proberaw@           clr       ,y
+                    pshs      y
+                    lda       #DIR.+READ.
+                    os9       I$Open
+                    bcs       proberestore@
+                    lbsr      RequireRBF
+                    pshs      b,cc
+                    os9       I$Close
+                    puls      b,cc
+proberestore@       puls      y
+                    pshs      cc
+                    lda       #'@
+                    sta       ,y
+                    puls      cc
+                    bcc       probedone@
+                    cmpb      #E$BTyp
+                    bne       probeerror@
+                    os9       F$Exit
+probeerror@         coma
+probedone@          puls      a,x,y,pc
+probeok@            clrb
+                    puls      a,x,y,pc
+                    use       rbfguard.asm
                     emod
 eom                 equ       *
                     end

@@ -118,7 +118,7 @@ start               stx       <parmptr            save param ptr
                     bcc       L00D9               branch if ok
 * If error, try to open without write permissions
                     ldx       <parmptr            get saved param ptr
-                    clra
+                    lda       #READ.
                     os9       I$Open
                     bcc       L00D9               branch if ok
 * If error, try to open as directory with read/write permissions
@@ -128,19 +128,13 @@ start               stx       <parmptr            save param ptr
                     bcc       L00D9               branch if ok
 * One last time, try open as directory only
                     ldx       <parmptr            get param ptr
-                    lda       #DIR.               load different perms
+                    lda       #DIR.+READ.         load different perms
                     os9       I$Open              try one more time
                     bcs       L0114               branch if error
 L00D9               sta       <fpath              save off path
                     stx       <cmdperms           save updated parameter ptr
-                    leax      pathopts,u          point X to buffer
-                    ldb       #SS.Opt             load with status code
-                    os9       I$GetStt            get status
-                    bcs       L0114               branch if error
-                    clrb
-                    lda       ,x                  get path type
-                    cmpa      #DT.RBF             check if RBF path
-                    lbne      ShowHelp            branch if not
+                    lbsr      RequireRBF
+                    lbcs      AttrTypeError
                     lda       <fpath              get path in A
                     ldb       #SS.FD              we want a file descriptor sector
                     leax      fdesc,u             point to buffer
@@ -307,6 +301,12 @@ L0278               eorb      <onOrOff            XOR with onOrOff
 OptErr              coma                          set carry
                     puls      pc,y,x              pull registers and return
 
+AttrTypeError       pshs      b,cc
+                    lda       <fpath
+                    os9       I$Close
+                    puls      b,cc
+                    os9       F$Exit
+                    use       rbfguard.asm
                     emod
 eom                 equ       *
                     end

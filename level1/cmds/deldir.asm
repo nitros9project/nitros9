@@ -12,6 +12,9 @@
 *
 *          2003/06/21  Boisy G. Pitre
 * Optimized for size.
+*
+*   5      2026/11/08
+* Enumerate with SS.ReadDir; only RBF needs ATTR before directory deletion.
 
                     nam       Deldir
                     ttl       Delete a directory
@@ -20,12 +23,13 @@
 
                     ifp1
                     use       defsfile
+                    use       readdir.d
                     endc
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       4
+edition             set       5
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -33,14 +37,14 @@ edition             set       4
 parmptr             rmb       2
 fpath               rmb       1
 what2do             rmb       1
-stats               rmb       24
+stats               rmb       32
 u001C               rmb       4
 u0020               rmb       4
 u0024               rmb       10
 u002E               rmb       6
 u0034               rmb       15
 u0043               rmb       1
-u0044               rmb       1
+isdir               rmb       1
 u0045               rmb       1
 u0046               rmb       2
 u0048               rmb       2
@@ -52,7 +56,7 @@ name                fcs       /Deldir/
 
 start               bsr       OpenPath
                     bcs       OpenErr
-                    bsr       GetOpts
+                    lbsr      IsDirectory
                     bcc       L002B
                     lbsr      PromptUser
                     bcs       OpenErr
@@ -79,7 +83,8 @@ OpenErr             pshs      b
 Exit                os9       F$Exit
 
 
-OpenPath            stx       <parmptr            save parameter pointer
+OpenPath            clr       <isdir             directory flag
+                    stx       <parmptr            save parameter pointer
                     lda       #READ.+WRITE.
                     os9       I$Open
                     bcs       L005D
@@ -90,6 +95,8 @@ L005D               ldx       <parmptr
                     os9       I$Open
                     bcs       L0090
                     sta       <fpath
+                    lda       #DIR.
+                    sta       <isdir
 L0068               ldx       <parmptr
                     os9       F$PrsNam
                     clra
@@ -100,30 +107,20 @@ L0068               ldx       <parmptr
                     bne       L0089
                     lda       #C$CR
                     sta       ,y+
-                    lda       #READ.+WRITE.
+                    lda       #READ.
                     ldx       <parmptr
                     os9       I$ChgDir
                     bcs       L0090
                     sty       <parmptr
                     bra       L0068
-L0089               leax      <-u001C,u
-                    stx       <u0044
-                    clr       <what2do
+L0089               clr       <what2do
 L0090               rts
 
-GetOpts             lda       <fpath
-                    ldb       #SS.OPT
-                    leax      stats,u
-                    os9       I$GetStt
-                    bcs       L00AB
-                    ldx       <u0044
-                    lda       <PD.ATT,x
-                    anda      #DIR.
-                    beq       L00AA
-                    clrb
+* I$Open determines the object kind without interpreting file-manager options.
+IsDirectory             clrb
+                    tst       <isdir
+                    beq       L00AB
                     orcc      #Carry
-                    bra       L00AB
-L00AA               clrb
 L00AB               rts
 
 Prompt              fcb       C$LF
@@ -229,14 +226,15 @@ L01C3               ldb       <what2do
                     beq       L0210
                     lda       <fpath
                     pshs      u
-                    ldu       #DIR.SZ*2
+                    ldu       #0                   SS.ReadDir filters dot entries
 L01D0               ldx       #$0000
                     os9       I$Seek
                     puls      u
+                    bcs       L0214
 L01D8               bsr       L0215
                     bcs       L0209
                     ldx       <parmptr
-                    lda       #READ.+WRITE.
+                    lda       #READ.
                     os9       I$ChgDir
                     bcs       L0214
                     ldy       <u0048
@@ -250,22 +248,25 @@ L01D8               bsr       L0215
                     bcs       L0214
                     os9       F$Wait
                     bcs       L0214
+                    tstb                          propagate child deletion failures
+                    bne       ChildError
                     leax      <DotDot,pcr
-                    lda       #READ.+WRITE.
+                    lda       #READ.
                     os9       I$ChgDir
                     bcc       L01D8
 L0209               cmpb      #E$EOF
-                    bne       L0214
+                    bne       ChildError
                     clrb
                     rts
 *         bra   L0214
 L0210               ldb       #$01
-                    orcc      #Carry
+ChildError          orcc      #Carry
 L0214               rts
 L0215               lda       <fpath
                     leax      <u0024,u
-                    ldy       #DIR.SZ
-                    os9       I$Read
+                    ldy       #RD.NameSize
+                    ldb       #SS.ReadDir
+                    os9       I$GetStt
                     bcs       L0238
                     lda       ,x
                     beq       L0215
@@ -287,7 +288,19 @@ ATTROPTS            fcc       " -d"
                     fcb       C$CR
 ATTROPTL            equ       *-ATTROPTS
 
-L0242               pshs      u
+* RBF deletes directories only after their DIR attribute is cleared. Other
+* file managers (including pcf) validate and remove directories themselves.
+L0242               lda       <fpath
+                    ldb       #SS.Opt
+                    leax      stats,u
+                    os9       I$GetStt
+                    bcs       AttrReturn
+                    lda       stats,u
+                    cmpa      #DT.RBF
+                    beq       RBFAttr
+                    clrb
+AttrReturn          rts
+RBFAttr             pshs      u
                     leau      <buffer,u
                     pshs      u
                     ldd       <u0046
@@ -307,6 +320,10 @@ L0242               pshs      u
                     os9       F$Fork
                     bcs       L026D
                     os9       F$Wait
+                    bcs       L026D
+                    tstb
+                    beq       L026D
+                    orcc      #Carry
 L026D               puls      u
                     rts
 L0270               decb

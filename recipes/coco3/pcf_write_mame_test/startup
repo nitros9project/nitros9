@@ -1,0 +1,3 @@
+mdir
+echo PCF writable /dd and /pc0
+echo FAT32STARTUPDONE

@@ -28,6 +28,9 @@
 *  13      2025/12/06  Boisy G. Pitre
 * Fix issue where dir -e output would go into 32 column mode when piped.
 
+*  14      2026/11/08
+* Use SS.ReadDir for file-manager-independent directory enumeration.
+
 ;;; dir
 ;;;
 ;;; Syntax:	dir [<opts>] [<path>]
@@ -43,12 +46,13 @@
 
                     ifp1
                     use       defsfile
+                    use       readdir.d
                     endc
 
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       13
+edition             set       14
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -65,8 +69,7 @@ narrow              rmb       1
 bufptr              rmb       2
 date                rmb       3
 time                rmb       3
-dent                rmb       DIR.SZ
-fdsect              rmb       FD.Creat-FD.ATT
+dent                rmb       RD.Size
 linebuff            rmb       530
 size                equ       .
 
@@ -80,7 +83,7 @@ DirOf               fcb       C$LF
 Dot                 fcc       "."
                     fcb       C$CR
 WHeader             fcb       C$CR,C$LF
-                    fcc       "Owner  Last modified   Attributes Sector Bytecount Name"
+                    fcc       "Owner  Last modified   Attributes   ID   Bytecount Name"
                     fcb       C$CR,C$LF
                     fcc       "----- ---------------- ---------- ------ --------- ----"
                     fcb       C$CR,C$LF
@@ -88,7 +91,7 @@ WHeaderL            equ       *-WHeader
 NHeader             fcb       C$CR,C$LF
                     fcc       "Modified on  Owner   Name"
                     fcb       C$CR,C$LF
-                    fcc       "  Attr     Sector     Size"
+                    fcc       "  Attr       ID      Size"
                     fcb       C$CR,C$LF
                     fcc       "==============================="
                     fcb       C$CR
@@ -164,16 +167,8 @@ L01A6               leax      >NHeader,pcr
                     ldy       #NHeaderL
 L01AE               lda       #$01
                     os9       I$Write
-L01B3               lda       <dirpath
-                    ldx       #$0000
-                    pshs      u
-                    ldu       #DIR.SZ*2
-                    os9       I$Seek
-                    puls      u
-                    lbra      L0253
-L01C5               tst       <dent
-                    lbeq      L0253
-                    tst       <extended
+L01B3               lbra      L0253
+L01C5               tst       <extended
                     bne       L01E8
                     leay      <dent,u
                     lbsr      PutStr
@@ -187,23 +182,11 @@ L01E0               subb      <colwidth
                     bne       L01D5
                     bra       L0253
 L01E8
-* Use SS.FDInf to get the file descriptor sector
-                    pshs      u
-                    lda       <dent+DIR.FD
-                    ldb       #FD.Creat-FD.ATT
-                    tfr       d,y
-                    leax      <fdsect,u
-                    lda       <dirpath
-                    ldb       #SS.FDInf
-                    ldu       <dent+DIR.FD+1
-                    os9       I$GetStt
-                    puls      u
-                    bcs       L0268               branch if SS.FDInf fails
                     tst       <narrow             are we on a narrow screen?
                     bne       L0231               branch if so
 
 * Wide extended output
-                    ldd       <fdsect+FD.OWN
+                    ldd       <dent+RD.Owner
                     clr       <u0006
                     bsr       L0274
                     lbsr      PutSpace
@@ -221,44 +204,48 @@ L022C               lbsr      CRnWrite
 
 * Narrow extended output
 L0231               lbsr      L030B
-                    ldd       <fdsect+FD.OWN
+                    ldd       <dent+RD.Owner
                     clr       <u0006
                     bsr       L0274
-                    bsr       PutSpace
+                    lbsr      PutSpace
                     leay      <dent,u
                     lbsr      PutStr
                     lbsr      CRnWrite
                     lbsr      L02D3
-                    bsr       PutSpace
-                    bsr       PutSpace
+                    lbsr      PutSpace
+                    lbsr      PutSpace
                     bsr       L026E
                     bsr       L0280
                     lbsr      CRnWrite
 L0253               leax      <dent,u
-                    ldy       #DIR.SZ
-                    lda       <dirpath
-                    os9       I$Read
+                    ldy       #RD.NameSize
+                    tst       <extended
+                    beq       RDCall
+                    ldy       #RD.Size
+RDCall              lda       <dirpath
+                    ldb       #SS.ReadDir
+                    os9       I$GetStt
                     lbcc      L01C5
                     cmpb      #E$EOF
                     bne       L0268
                     clrb
 L0268               lbsr      CRnWrite
 Exit                os9       F$Exit
-L026E               lda       <dent+DIR.FD
+L026E               lda       <dent+RD.ID
                     bsr       L0298
-                    ldd       <dent+DIR.FD+1
+                    ldd       <dent+RD.ID+1
 L0274               bsr       L029A
                     tfr       b,a
                     bsr       L028E
                     inc       <u0006
                     bsr       L029C
                     bra       PutSpace
-L0280               ldd       <fdsect+FD.SIZ
+L0280               ldd       <dent+RD.Bytes
                     bsr       L0298
                     tfr       b,a
                     bsr       L029A
-                    bsr       PutSpace
-                    ldd       <fdsect+FD.SIZ+2
+                    lbsr      PutSpace
+                    ldd       <dent+RD.Bytes+2
                     bra       L0274
 L028E               pshs      a
                     lsra
@@ -298,7 +285,7 @@ PutOk               sta       ,x+                 save A
 PermMask            fcc       "dsewrewr"
                     fcb       $FF
 
-L02D3               ldb       <fdsect+FD.ATT
+L02D3               ldb       <dent+RD.Attr
                     leax      <PermMask,pcr
                     lda       ,x+
 L02DA               lslb
@@ -328,11 +315,11 @@ DoWrite             leax      <linebuff,u
                     lda       #$01
                     os9       I$WritLn
                     puls      pc,y,x,b,a
-L030B               leax      <fdsect+FD.DAT,u
+L030B               leax      <dent+RD.Modified,u
 L030E               bsr       L0338
                     bsr       L0324
                     bsr       L0324
-                    bsr       PutSpace
+                    lbsr      PutSpace
                     bsr       Byte2ASC
                     tst       <narrow
                     beq       L0320
