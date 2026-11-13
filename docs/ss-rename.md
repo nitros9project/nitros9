@@ -1,7 +1,7 @@
 # SS.Rename
 
 `SS.Rename` (`$2D`) renames an entry within an open parent directory. It is
-implemented by Level 1 and Level 2 RBF, and by RFM with a matching DriveWire
+implemented by Level 1 and Level 2 RBF and pcf, and by RFM with a matching DriveWire
 server. The child file or directory is not opened: its read/write permission
 bits do not control whether its name may change.
 
@@ -43,6 +43,29 @@ Typical errors are `E$BPNam` for malformed names/records, `E$FNA` for permission
 or path-mode failure, `E$PNNF` for an absent source, and `E$CEF` for a destination
 collision. RBF propagates disk, lock, and transfer errors.
 
+## pcf FAT32 behavior
+
+pcf accepts case-insensitive ASCII 8.3 basenames through the same 60-byte
+interface. It changes the existing short directory entry in place, preserves
+its cluster, size, attributes and timestamps, and leaves the parent's directory
+position unchanged. New aliases are uppercase; a case-only request is a
+successful no-op. FAT lowercase display flags are cleared when changing a name.
+No clusters are allocated or freed, and a renamed directory retains its children
+and `..` link because its parent does not change.
+
+The parent must be opened with `DIR.!WRITE.` on a writable descriptor and must
+not have the FAT read-only attribute. The child's read-only attribute does not
+prevent rename. Raw directory writes and resizing remain forbidden. Sources
+with preceding long-name entries are rejected with `E$FNA`; cross-directory
+moves, replacement of an existing destination, and LFN mutation are unsupported.
+
+An open source file, an open source directory, or a source directory held as any
+live process's data or execution directory returns `E$Share`, including references
+through `/dd` and `/pc0`. Duplicated paths remain busy until the final close.
+pcf holds its device-wide operation lock through lookup, collision checking and
+update. Validation and sharing rejections do not write to disk. Driver errors
+propagate; sector writes are not transactional under media failure or power loss.
+
 ## DriveWire framing
 
 ```
@@ -69,6 +92,7 @@ With `MC6809` installed and `LWASM` set to the assembler:
 ```
 python scripts/test-rename.py
 python scripts/test-rfm.py
+python scripts/test-pcf-rename.py
 ```
 
 The first executes both assembled RBF implementations with deterministic disk
@@ -78,3 +102,17 @@ case changes, position restoration, and I/O failures. The second exercises the
 actual assembled RFM framing, validation, task-memory copying, and error reply.
 DriveWire's Swift suite also tests real host filesystem renames, symlinks,
 cookies, open descendants, and permission failures.
+
+The pcf test executes both OS levels, including malformed records, 8.3 validation,
+LFN rejection, collisions across sectors, parent state preservation, in-use
+directories, and injected copy/read/write failures. The writable MAME recipe
+runs 25 real parent/child rename checks, verifies zero disk writes during 16
+rejections, exercises the `rename` command on files and directories, and checks
+names and contents after a cold boot. Both boots end with a read-only FAT check.
+
+```sh
+make -C recipes/coco3/pcf_write_mame_test check-rename
+make -C recipes/coco3/pcf_write_mame_test check
+# To watch the same guest tests:
+make -C recipes/coco3/pcf_write_mame_test demo
+```
