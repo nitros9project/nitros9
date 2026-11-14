@@ -18,12 +18,15 @@ ifeq ($(COLLECTION_MEDIA),sdc)
 RBF = rbf.mn rbsuper.dr llcocosdc.dr ddsd0_cocosdc.dd sd0_cocosdc.dd sd1_cocosdc.dd
 KERNEL_TRACK = $(REL) boot_sdc krn
 else
-RBF = rbf.mn emudsk.dr dd_emu.dd h0_emu.dd rb1773.dr d0_40d.dd d1_40d.dd
+RBF = rbf.mn emudsk.dr dd_emu.dd h0_emu.dd
 endif
 BOOTMODS_EXTRA = g40.dt vrn.dr vi.dd ftdd.dd
 RECIPE_DEPS = collection.json $(NITROS9DIR)/scripts/game-collection.py
 RECIPE_OUTPUTS = $(DSKIMAGE) $(if $(filter emu,$(COLLECTION_MEDIA)),games-boot.dsk)
 include $(GAME_RECIPE_DIR)/../coco3.mak
+
+# Removing a module from the list must also invalidate an existing bootfile.
+bootfile: $(GAME_RECIPE_DIR)/collection.mak
 
 prepare:
 	python3 $(NITROS9DIR)/scripts/game-collection.py prepare --recipe "$(GAME_RECIPE_DIR)" \
@@ -72,7 +75,8 @@ MAME_FLAGS ?= -window -skip_gameinfo
 VHD_TEST_GAME ?= sokoban
 ensure-boot:
 	@for source in "$(GAME_RECIPE_DIR)/collection.mak" "$(GAME_RECIPE_DIR)/menu.asm" \
-		"$(NITROS9DIR)/scripts/game-collection.py" "$(GAME_RECIPE_DIR)/../coco3.mak"; do \
+		"$(NITROS9DIR)/scripts/game-collection.py" "$(NITROS9DIR)/scripts/game-layout.py" \
+		"$(NITROS9DIR)/scripts/install-game.py" "$(GAME_RECIPE_DIR)/../coco3.mak"; do \
 		if test "$$source" -nt games-boot.dsk; then $(MAKE) update-boot || exit $$?; break; fi; \
 	done
 
@@ -102,6 +106,7 @@ update-menu:
 
 update-boot:
 	$(MAKE) libs kernelfile bootfile
+	python3 $(NITROS9DIR)/scripts/game-collection.py migrate-layout --manifest collection.json --disk $(DSKIMAGE)
 	python3 $(NITROS9DIR)/scripts/game-collection.py refresh-launchers --manifest collection.json --disk $(DSKIMAGE)
 	python3 $(NITROS9DIR)/scripts/game-collection.py refresh-sierra-tocs --manifest collection.json --disk $(DSKIMAGE)
 	$(OS9GEN) $(DSKIMAGE) -t=kerneltrack

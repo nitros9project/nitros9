@@ -17,8 +17,8 @@ process remains present for at least 120 consecutive frames, with at least
 60 emulated seconds allowed for startup. It saves screenshots and logs. This
 is a startup smoke test, not a game-rules or complete playthrough test.
 Rogue checks dismiss the title, enter a name, and take a dungeon turn.
-Rogue launches with read/write terminal paths because its original display
-routines write through path 0.
+Rogue and Microscopic Mission launch with read/write terminal paths, as
+required by their original terminal routines.
 For Arcade Pak, the check selects Smash from the shell menu. Reversi retains
 its scripted preferences/board input replay and captures additional screens.
 Sierra checks select keyboard controls with CTRL-BREAK and allow two emulated
@@ -116,7 +116,9 @@ before rebuilding. Emulator checks use a disposable copy.
 
 `configs/*.mak` selects each game's source directory, compiled programs,
 data files, display width, startup command, and additional boot modules.
-Use `list` for all available game selectors. Supported groups are:
+Use `list` for all available game selectors. The menu shows full game titles;
+`GAME_TITLES` in `scripts/game-collection.py` defines their display names and
+uppercase, space-free disk-directory names. Supported groups are:
 
 - Arcade Pak, Flight Simulator II, Koronis Rift, Kyum-Gai, Microscopic Mission,
   Pac-OS9, Rescue on Fractalus, Rogue, and Sub Battle Simulator.
@@ -178,15 +180,22 @@ columns use the dedicated CoWin `/g40` device. The collection bootfile does
 not include CoVDG or `/v1`.
 Arcade Pak opens a shell where you can run `smash`, `shanghai`, or `thexder`;
 exit that shell with EOF to return to the menu. Run `games` again from the
-main shell to reopen the menu, or `shell <catalog` to list the installed games.
+main shell to reopen the menu, or `shell </DD/CMDS/catalog` to list the installed games.
 
-Each game has its own `/dd/GAMES/name/CMDS` and data directory. Sierra titles
-include all resource volumes in that directory. Their table of contents
-opens at most two volumes at once, leaving file handles available for the
-interpreter. Every entry refers to the VHD, so no data-floppy swapping is needed. Original absolute data paths
-used by Adventure, Rogue, Sub Battle Simulator, and Walk are also populated.
-Sub Battle Simulator starts directly with all side-two data in `/dd/SUB`.
-The collection includes the screen-service support required by Sierra.
+Each game has an uppercase directory under `/DD/GAMES`, including its own
+`CMDS` and data files. Examples are `/DD/GAMES/ROGUE`,
+`/DD/GAMES/SUBBATTLESIMULATOR`, and `/DD/GAMES/MICROSCOPICMISSION`.
+Sierra titles include all resource volumes there. Their table of contents
+opens at most two volumes at once, leaving file handles for the interpreter.
+Every entry refers to the VHD, so no data-floppy swapping is needed.
+Sub Battle Simulator starts directly from its game directory.
+
+`update-vhd-boot` also migrates older layouts: it uppercases directory names,
+moves the old root `ROGUE` and `SUB` data into their game directories, and
+updates the launch scripts and menu. Migration operates on a temporary copy,
+verifies copied data, preserves saves and file permissions, and leaves the
+original image unchanged if conflicting saved data is found.
+The VHD bootfile uses EmuDsk with `/DD` and `/H0`.
 
 Choose a smaller library with `GAMES` (the default includes every game whose
 source directory is present in your games checkout):

@@ -18,6 +18,9 @@ def main():
     for name in ('programs', 'root', 'sys', 'data-programs', 'screens'):
         parser.add_argument('--' + name, nargs='*', default=[])
     args = parser.parse_args()
+    args.prefix = args.prefix.upper()
+    args.data_dir = args.data_dir.upper()
+    args.existing_dir = [name.upper() for name in args.existing_dir]
     made = {'.', 'CMDS'} | ({'SYS'} if args.sys_exists else set())
     made.update(args.existing_dir)
 
