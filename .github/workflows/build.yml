@@ -1,49 +1,61 @@
 name: Build
 
 on:
+  push:
+    branches: ['**']
   workflow_dispatch:
     inputs:
+      suite:
+        description: Additional tests (quick checks always run)
+        required: true
+        default: full
+        type: choice
+        options: [quick, full, mame, all]
       game:
-        description: Game to boot (for example rogue, arcadepak, christmas86)
+        description: Game to boot with the MAME suite
         required: true
         default: rogue
         type: string
-  push:
-    branches:
-      - main
-      - '*'
-  pull_request:
-    branches:
-      - main
-      - '*'
-
-env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .
-  LANGUAGES: ${{ github.workspace }}/nitros9-languages
-  NITROS9_GAMES_DIR: ${{ github.workspace }}/nitros9-games
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: read
 
+# Superseded commits on a branch do not consume more runner time.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LANGUAGES: ${{ github.workspace }}/nitros9-languages
+  NITROS9_GAMES_DIR: ${{ github.workspace }}/nitros9-games
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 defaults:
-    run:
-        shell: bash {0}
+  run:
+    shell: bash
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  quick:
+    name: Quick checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
+    - name: Checkout
+      uses: actions/checkout@v5
 
-#
-# Prepare environment with necessary packages.
-# disabled for now, uncomment if need to install package
-#    - name: Setup Requirements
-#      run: |
-#        sudo apt-get install mingw-w64
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
 
+    - name: Test representative system modules and regression checks
+      run: bash scripts/ci-quick.sh
+
+  build:
+    name: Full build
+    if: github.event_name == 'workflow_dispatch' && (inputs.suite == 'full' || inputs.suite == 'all')
+    needs: quick
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
     - name: Checkout
       uses: actions/checkout@v5
 
@@ -60,66 +72,18 @@ jobs:
         repository: nitros9project/nitros9-languages
         path: nitros9-languages
 
-#
-# Cache LwTools, if no cache key entry exists a new one will be created upon a successful build.
-# This will store the entries in 'path:' in a zip file, conveniently they all start with 'lw'
-#
-    - name: Cache LwTools
-      id: cache-lwtools
-      uses: actions/cache@v5
-      env:
-        cache-name: cache-lwtools
-      with:
-        path: /usr/local/bin/lw*
-        key: lwtools-4.24
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
 
-#
-# Fetch latest toolshed from the official repo.
-#
-    - name: Fetch Toolshed
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        mkdir -p toolshed
-        # Find the newest tag that starts with 'v' (ignoring DiskShed-*)
-        TOOLSHED_TAG=$(gh release list -R nitros9project/toolshed --limit 30 \
-          | awk '{print $1}' | grep -E '^v[0-9]' | head -n 1)
-
-        # Download the matching asset from that specific release
-        gh release download "$TOOLSHED_TAG" -R nitros9project/toolshed \
-          -p "toolshed-unix*.tgz" -D toolshed
-
-#
-# Unzip fetched toolshed binaries directly into /usr/local/bin
-#
-
-    - name: Install Toolshed
-      run: |
-        sudo tar xvf toolshed/toolshed-unix*.tgz --strip-components=1 -C /usr/local/bin
-
-#
-# If LwTools was cached last time, we can skip this step.
-# otherwise fetch it, build and install to /usr/local/bin.
-#
-    - if: ${{ steps.cache-lwtools.outputs.cache-hit != 'true' }}
-      name: Install Lwtools
-      run: |
-        sudo bash ./.github/workflows/lwtools.sh
-
-#
-# Trial build all nitros9 targets.
-#
-    - name: Build NitrOS9
-      run: |
-        sudo bash ./.github/workflows/nitros9.sh
-      
+    - name: Build NitrOS-9
+      run: bash .github/workflows/nitros9.sh
 
   mame-smoke:
-    # Emulator testing is opt-in; ordinary pushes keep the build-only checks.
-    if: github.event_name == 'workflow_dispatch'
+    name: MAME smoke tests
+    if: github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'all')
+    needs: quick
     runs-on: ubuntu-24.04
     timeout-minutes: 20
-
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -137,52 +101,8 @@ jobs:
         repository: nitros9project/nitros9-languages
         path: nitros9-languages
 
-#
-# Cache LwTools, if no cache key entry exists a new one will be created upon a successful build.
-# This will store the entries in 'path:' in a zip file, conveniently they all start with 'lw'
-#
-    - name: Cache LwTools
-      id: cache-lwtools
-      uses: actions/cache@v5
-      env:
-        cache-name: cache-lwtools
-      with:
-        path: /usr/local/bin/lw*
-        key: lwtools-4.24
-
-#
-# Fetch latest toolshed from the official repo.
-#
-    - name: Fetch Toolshed
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        mkdir -p toolshed
-        # Find the newest tag that starts with 'v' (ignoring DiskShed-*)
-        TOOLSHED_TAG=$(gh release list -R nitros9project/toolshed --limit 30 \
-          | awk '{print $1}' | grep -E '^v[0-9]' | head -n 1)
-
-        # Download the matching asset from that specific release
-        gh release download "$TOOLSHED_TAG" -R nitros9project/toolshed \
-          -p "toolshed-unix*.tgz" -D toolshed
-
-#
-# Unzip fetched toolshed binaries directly into /usr/local/bin
-#
-
-    - name: Install Toolshed
-      run: |
-        sudo tar xvf toolshed/toolshed-unix*.tgz --strip-components=1 -C /usr/local/bin
-
-#
-# If LwTools was cached last time, we can skip this step.
-# otherwise fetch it, build and install to /usr/local/bin.
-#
-    - if: ${{ steps.cache-lwtools.outputs.cache-hit != 'true' }}
-      name: Install Lwtools
-      run: |
-        sudo bash ./.github/workflows/lwtools.sh
-
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
 
     - name: Install MAME and virtual display
       run: |
