@@ -1239,6 +1239,17 @@ KrnActivateProcess  bsr       FAprocTarget ; activate next process
 * (or $D00 for the Wildbits) when assembled, as they have to always be in the
 * constant RAM page ($FE00-$FEFF for CoCo 3, $FD00-$FDFF for the Wildbits).
 
+* Keep the CoCo 3 return paths in the constant page and the interrupt
+* vectors at $FEEE.  Padding here also keeps the handlers' short branches
+* in range.  A kernel that outgrows this space must fail assembly.
+                  IFNE    coco3+immunity
+                  IFNE    H6309
+                    fill      0,$0E02-*
+                  ELSE
+                    fill      0,$0DF1-*
+                  ENDC
+                  ENDC
+
 * The default routine for D.SysIRQ.
 S.SysIRQ
                     lda       <D.SSTskN ; get the current task number
@@ -1605,6 +1616,11 @@ SWIStack
 * kernel loads into memory.  All interrupts come through the 6809 vectors at
 * $FFF0-$FFFE and get directed to here. From here, the BRA takes CPU control
 * to the various handlers in the kernel.
+                  IFNE    coco3+immunity
+                  IFNE    *-$0EEE
+                    error     CoCo 3 interrupt vectors must start at $FEEE
+                  ENDC
+                  ENDC
                     bra       SWI3VCT   ; sWI3 vector comes here
                     nop       ;         no operation placeholder
                     bra       SWI2VCT   ; sWI2 vector comes here
