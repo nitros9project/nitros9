@@ -2,6 +2,7 @@
 """Build a single EmuDsk game library from the shared game recipe manifests."""
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -12,6 +13,35 @@ INSTALLER = Path(__file__).with_name('install-game.py')
 
 def run(*args, **kwargs):
     return subprocess.run(list(map(str, args)), check=True, **kwargs)
+
+
+GAME_TITLES = {
+    'adventure': 'Adventure', 'arcadepak': 'Arcade Pak',
+    'blackcauldron': 'The Black Cauldron', 'christmas86': 'Christmas 1986',
+    'cocothello': 'Cocothello', 'flightsim2': 'Flight Simulator II',
+    'goldrush': 'Gold Rush!', 'hordes': 'Hordes & Holes', 'kalah': 'Kalah',
+    'kingsquest1': "King's Quest I", 'kingsquest2': "King's Quest II",
+    'kingsquest3': "King's Quest III", 'kingsquest4': "King's Quest IV",
+    'koronis': 'Koronis Rift', 'kyumgai': 'Kyum-Gai: To Be Ninja',
+    'leisuresuitlarry': 'Leisure Suit Larry', 'manhunter1': 'Manhunter: New York',
+    'manhunter2': 'Manhunter 2: San Francisco', 'mmission': 'Microscopic Mission',
+    'pacos9': 'Pac-OS9', 'policequest1': 'Police Quest',
+    'rescueof': 'Rescue on Fractalus!', 'reversi': 'Reversi', 'rogue': 'Rogue',
+    'sokoban': 'Sokoban', 'solitaire': 'Pyramid Solitaire',
+    'spacequest0': 'Space Quest 0', 'spacequest1': 'Space Quest I',
+    'spacequest2': 'Space Quest II', 'subsim': 'Sub Battle Simulator', 'walk': 'Walk',
+}
+
+
+def game_title(game):
+    return GAME_TITLES[game['game']]
+
+
+def game_directory(game):
+    name = re.sub(r'[^A-Z0-9]', '', game_title(game).upper())
+    if not 1 <= len(name) <= 29:
+        raise SystemExit(f'Invalid OS-9 directory name: {name}')
+    return 'GAMES/' + name
 
 
 def available(args):
@@ -39,12 +69,12 @@ def menu_source(games):
     # Games own their current directory and terminal; the menu remains on /TERM.
     text = '\x0cNitrOS-9 Games - select a number (0 exits)\r\r'
     for index in range(0, len(games), 2):
-        cells = [f'{i+1:2d}. {games[i]["game"]:<24}' for i in range(index, min(index+2, len(games)))]
+        cells = [f'{i+1:2d}. {game_title(games[i]):<34}' for i in range(index, min(index+2, len(games)))]
         text += ''.join(cells) + '\r'
     text += '\rSelection: '
     raw = list(text.replace('\r', '\r\n').encode('ascii'))
     lines = ['        fcb ' + ','.join(f'${b:02x}' for b in raw[i:i+16]) for i in range(0, len(raw), 16)]
-    labels = '\n'.join(f'path{i} fcc "/dd/GAMES/{g["game"]}/launch"\n        fcb 13' for i, g in enumerate(games))
+    labels = '\n'.join(f'path{i} fcc "/DD/{game_directory(g)}/launch"\n        fcb 13' for i, g in enumerate(games))
     table = '\n'.join(f'        fdb path{i}-paths,dev{game["cols"]}-paths' for i, game in enumerate(games))
     return f'''GameCount equ {len(games)}
 menu
@@ -108,38 +138,95 @@ def refresh_sierra_tocs(args):
                 continue
             toc = temporary / 'tOC.txt'
             toc.write_text(sierra_toc(game))
-            prefix = f'GAMES/{game["game"]}'
+            prefix = game_directory(game)
             run('python3', INSTALLER, '--disk', args.disk, '--source', temporary,
                 '--prefix', prefix, '--existing-dir', prefix, '--existing-dir', prefix + '/CMDS',
                 '--sys-exists', '--toc', toc)
 
 
-def refresh_launchers(args):
-    # Repair terminal redirects without reinstalling game assets or saved data.
+def copy_script(disk, temporary, text, path):
+    directory, name = path.rsplit('/', 1)
+    host = temporary / name
+    host.write_bytes(text.replace('\n', '\r').encode('ascii'))
+    run('python3', INSTALLER, '--disk', disk, '--source', temporary, '--root', name,
+        '--data-dir', directory, '--existing-dir', directory, '--sys-exists')
+    run('os9', 'attr', '-ne', '-npe', '-r', '-pr', f'{disk},{path}')
+
+
+def game_scripts(game):
+    prefix = game_directory(game)
+    device = {32: 'G40', 40: 'G40', 80: 'TERM'}[game['cols']]
+    if game['game'] in ('rogue', 'mmission'):
+        command = 'rogue' if game['game'] == 'rogue' else 'mm'
+        body = f'link shell\n{command} <>>>/{device}\n'
+    elif game['game'] == 'subsim':
+        body = f'link shell\nsub <>>>/{device}\n'
+    elif game['startup']:
+        body = Path(game['startup']).read_text().replace('<>>>/term', f'<>>>/{device}').replace('</term', f'</{device}').replace('</1', f'</{device}').replace('load utilpak1', 'load /DD/CMDS/utilpak1')
+        body = body.replace('/dd/sys/', '/DD/SYS/')
+    else:
+        body = game['command'] + f' </{device}\n'
+    if game['game'] == 'arcadepak':
+        body += f'shell </{device}\n'
+    play = f'chd /DD/{prefix}\nchx /DD/{prefix}/CMDS\ndisplay 1b21\n' + body
+    launch = f'shell -p </DD/{prefix}/play >/{device} >>/{device}\n'
+    return play, launch
+
+
+def migrate_layout(args):
     games = json.loads(args.manifest.read_text())
-    with tempfile.TemporaryDirectory() as temporary:
-        temporary = Path(temporary)
+    moves = [{'source': 'GAMES/' + game['game'], 'destination': game_directory(game)}
+             for game in games]
+    adventure = next((g for g in games if g['game'] == 'adventure'), None)
+    if adventure:
+        moves.append({'source': 'GAMES/ADVENT', 'destination': game_directory(adventure),
+                      'baseline': {Path(name).name.casefold(): str(Path(adventure['source']) / name)
+                                   for name in adventure['root']}})
+    for legacy, selector in [('ROGUE', 'rogue'), ('SUB', 'subsim')]:
+        game = next((g for g in games if g['game'] == selector), None)
+        if game:
+            baseline = {Path(name).name.casefold(): str(Path(game['source']) / name)
+                        for name in game['root'] + game['data_programs']}
+            moves.append({'source': legacy, 'destination': game_directory(game), 'baseline': baseline})
+    # Compile the path fixes before touching an existing image. Publishing the
+    # matching games sources is required; an old checkout fails safely here.
+    updates = {'rogue': ['rogue'], 'subsim': ['sub', 'sub1', 'sub2', 'sub5'],
+               'adventure': ['build/adventure'], 'mmission': ['mm']}
+    programs = []
+    nitros9 = Path(__file__).resolve().parents[1]
+    c3root = Path(os.environ.get('LANGUAGES', nitros9.parent / 'nitros9-languages')) / 'c3'
+    for game in games:
+        selector = game['game']
+        if selector not in updates:
+            continue
+        source = Path(game['source'])
+        if selector == 'adventure':
+            run('make', '-C', c3root, 'runtime')
+        run('make', '-C', source, f'NITROS9DIR={nitros9}', f'C3ROOT={c3root}',
+            'PORT=coco3', *updates[selector])
+        for name in updates[selector]:
+            host = source / name
+            data = host.read_bytes()
+            obsolete = (selector == 'rogue' and b'...../rogue' in data.lower()
+                        or selector == 'subsim' and b'sub/' in data.lower()
+                        or selector == 'adventure' and b'/DD/GAMES/ADVENT\0' in data.upper()
+                        or selector == 'mmission' and data[0x21:0x23] != b'\x86\x01')
+            if obsolete:
+                raise SystemExit(f'Update the games checkout before migrating: {host}')
+            programs.append({'source': str(host),
+                             'destination': game_directory(game) + '/CMDS/' + host.name})
+    run('python3', Path(__file__).with_name('game-layout.py'), '--disk', args.disk,
+        '--moves', json.dumps(moves), '--install', json.dumps(programs))
+
+
+def refresh_launchers(args):
+    games = json.loads(args.manifest.read_text())
+    with tempfile.TemporaryDirectory() as folder:
+        temporary = Path(folder)
         for game in games:
-            if game['cols'] != 32 and game['game'] != 'rogue':
-                continue
-            directory = f'GAMES/{game["game"]}'
-            for name in ('play', 'launch'):
-                host = temporary / name
-                if host.exists():
-                    host.unlink()
-                run('os9', 'copy', f'{args.disk},{directory}/{name}', host)
-                original = host.read_bytes()
-                updated = re.sub(rb'/v1(?=\s|$)', b'/g40', original, flags=re.IGNORECASE)
-                if game['game'] == 'rogue' and name == 'play':
-                    updated = re.sub(rb'(\brogue[ \t]+)</g40(?=\s|$)',
-                                     rb'\1<>>>/g40', updated, flags=re.IGNORECASE)
-                if game['game'] == 'subsim' and name == 'play':
-                    updated = re.sub(rb'\bpresub[ \t]+</g40(?=\s|$)',
-                                     b'chd /dd\rsub <>>>/g40', updated, flags=re.IGNORECASE)
-                if updated != original:
-                    host.write_bytes(updated)
-                    run('python3', INSTALLER, '--disk', args.disk, '--source', temporary,
-                        '--root', name, '--data-dir', directory, '--existing-dir', directory)
+            play, launch = game_scripts(game)
+            for name, body in [('play', play), ('launch', launch)]:
+                copy_script(args.disk, temporary, body, game_directory(game) + '/' + name)
 
 
 def link_boot(args):
@@ -216,17 +303,10 @@ def install(args):
     global_sys = {}
     with tempfile.TemporaryDirectory() as temp:
         temp = Path(temp)
-        def copy_script(text, path):
-            directory, name = path.rsplit('/', 1)
-            named = temp / name
-            named.write_bytes(text.replace('\n', '\r').encode('ascii'))
-            run('python3', INSTALLER, '--disk', disk, '--source', temp, '--root', name,
-                '--data-dir', directory, '--existing-dir', directory, '--sys-exists')
-            run('os9', 'attr', '-ne', '-npe', '-r', '-pr', f'{disk},{path}')
 
         for game in games:
             name, source = game['game'], Path(game['source'])
-            prefix = f'GAMES/{name}'
+            prefix = game_directory(game)
             command = ['python3', str(INSTALLER), '--disk', str(disk), '--source', str(source),
                        '--prefix', prefix, '--sys-exists', '--existing-dir', 'GAMES',
                        '--programs', *game['programs'], '--root', *game['root'],
@@ -238,7 +318,7 @@ def install(args):
                 command += ['--toc', str(toc)]
             run(*command)
             # Preserve absolute data paths used by the original games.
-            if game['data_dir'] != '.':
+            if game['data_dir'] != '.' and game['data_dir'].upper() != prefix:
                 run('python3', INSTALLER, '--disk', disk, '--source', source, '--existing-dir', 'GAMES',
                     '--data-dir', game['data_dir'], '--root', *game['root'], '--data-programs', *game['data_programs'])
             for file in game['sys']:
@@ -250,17 +330,11 @@ def install(args):
                     run('python3', INSTALLER, '--disk', disk, '--source', source,
                         '--sys-exists', '--sys', file)
                     global_sys[basename] = payload
-            device = {32: 'g40', 40: 'g40', 80: 'term'}[game['cols']]
-            if game['startup']:
-                body = Path(game['startup']).read_text().replace('<>>>/term', f'<>>>/{device}').replace('</term', f'</{device}').replace('</1', f'</{device}').replace('load utilpak1', 'load /dd/cmds/utilpak1')
-            else:
-                body = game['command'] + f' </{device}\n'
-            if name == 'arcadepak':
-                body += f'shell </{device}\n'
-            copy_script(f'chd /dd/{prefix}\nchx /dd/{prefix}/CMDS\ndisplay 1b21\n' + body,
-                        f'{prefix}/play')
-            copy_script(f'shell -p </dd/{prefix}/play >/{device} >>/{device}\n', f'{prefix}/launch')
-        copy_script(''.join(f'echo {i+1}. {game["game"]}\n' for i, game in enumerate(games)), 'CMDS/catalog')
+            play, launch = game_scripts(game)
+            copy_script(disk, temp, play, prefix + '/play')
+            copy_script(disk, temp, launch, prefix + '/launch')
+        copy_script(disk, temp, ''.join(f'echo "{i+1}. {game_title(game)}"\n'
+                                      for i, game in enumerate(games)), 'CMDS/catalog')
     print(f'Installed {len(games)} games in {disk}')
 
 
@@ -272,6 +346,9 @@ def check(args):
     game = games[chosen]
     base = args.manifest.resolve().parent
     visual = ['--min-screen-change', '0.2', '--require-animation'] if args.game == 'walk' else []
+    if args.game == 'mmission':
+        visual += ['--replay', str(Path(__file__).with_name('mmission-replay.lua')),
+                   '--min-frames', '7200', '--seconds', '140', '--min-screen-colors', '4']
     if args.game == 'subsim':
         visual += ['--min-screen-colors', '3']
     if args.game in ('koronis', 'kingsquest3'):
@@ -326,6 +403,9 @@ def main():
     p.add_argument('--manifest', type=Path, required=True)
     p.add_argument('--output', type=Path, required=True)
     p = actions.add_parser('refresh-sierra-tocs')
+    p.add_argument('--disk', type=Path, required=True)
+    p.add_argument('--manifest', type=Path, required=True)
+    p = actions.add_parser('migrate-layout')
     p.add_argument('--disk', type=Path, required=True)
     p.add_argument('--manifest', type=Path, required=True)
     p = actions.add_parser('refresh-launchers')
