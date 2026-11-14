@@ -1,0 +1,18 @@
+name: Set up NitrOS-9 tools
+description: Restore or install checksum-verified LWTOOLS 4.25 and ToolShed 2.6.1
+runs:
+  using: composite
+  steps:
+    - name: Cache toolchain
+      id: tools
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.temp }}/nitros9-tools
+        key: nitros9-tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/setup-ci-tools.sh', '.github/actions/setup-tools/action.yml') }}
+    - name: Install toolchain
+      if: steps.tools.outputs.cache-hit != 'true'
+      shell: bash
+      run: bash scripts/setup-ci-tools.sh "$RUNNER_TEMP/nitros9-tools"
+    - name: Add tools to PATH
+      shell: bash
+      run: echo "$RUNNER_TEMP/nitros9-tools/bin" >> "$GITHUB_PATH"

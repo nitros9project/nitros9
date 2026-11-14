@@ -20,7 +20,10 @@ be separate commits.
 
 ## Verification
 
-Run the narrowest relevant module build or recipe first. Changes affecting
+Run the narrowest relevant module build or recipe first. The automatic checks
+can also be run locally with `bash scripts/ci-quick.sh`; see
+[continuous integration](docs/continuous-integration.md) for coverage and manual
+full-build/MAME suites. Changes affecting
 shared build rules should also run:
 
 ```sh
