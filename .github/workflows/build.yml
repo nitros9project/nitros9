@@ -1,6 +1,7 @@
 name: Build
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -98,3 +99,102 @@ jobs:
       run: |
         sudo bash ./.github/workflows/nitros9.sh
       
+
+  mame-smoke:
+    # Emulator testing is opt-in; ordinary pushes keep the build-only checks.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+
+    - name: Checkout NitrOS-9 languages
+      uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-languages
+        path: nitros9-languages
+
+#
+# Cache LwTools, if no cache key entry exists a new one will be created upon a successful build.
+# This will store the entries in 'path:' in a zip file, conveniently they all start with 'lw'
+#
+    - name: Cache LwTools
+      id: cache-lwtools
+      uses: actions/cache@v5
+      env:
+        cache-name: cache-lwtools
+      with:
+        path: /usr/local/bin/lw*
+        key: lwtools-4.24
+
+#
+# Fetch latest toolshed from the official repo.
+#
+    - name: Fetch Toolshed
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        mkdir -p toolshed
+        # Find the newest tag that starts with 'v' (ignoring DiskShed-*)
+        TOOLSHED_TAG=$(gh release list -R nitros9project/toolshed --limit 30 \
+          | awk '{print $1}' | grep -E '^v[0-9]' | head -n 1)
+
+        # Download the matching asset from that specific release
+        gh release download "$TOOLSHED_TAG" -R nitros9project/toolshed \
+          -p "toolshed-unix*.tgz" -D toolshed
+
+#
+# Unzip fetched toolshed binaries directly into /usr/local/bin
+#
+
+    - name: Install Toolshed
+      run: |
+        sudo tar xvf toolshed/toolshed-unix*.tgz --strip-components=1 -C /usr/local/bin
+
+#
+# If LwTools was cached last time, we can skip this step.
+# otherwise fetch it, build and install to /usr/local/bin.
+#
+    - if: ${{ steps.cache-lwtools.outputs.cache-hit != 'true' }}
+      name: Install Lwtools
+      run: |
+        sudo bash ./.github/workflows/lwtools.sh
+
+
+    - name: Install MAME and virtual display
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mame xvfb xauth
+        echo "/usr/games" >> "$GITHUB_PATH"
+
+    - name: Download and verify ROM archives
+      run: |
+        mkdir -p "$RUNNER_TEMP/roms"
+        cd "$RUNNER_TEMP/roms"
+        for archive in coco3 coco3h coco_fdc; do
+          curl --fail --location --retry 3 --max-time 60 \
+            "https://colorcomputerarchive.com/repo/ROMs/MAME-MESS/$archive.zip" -o "$archive.zip"
+        done
+        sha256sum --check <<'HASHES'
+        a7e35287874ca75f119ae1aeb565eb5edf4049f3fa733a68c4142b58f2d17c42  coco3.zip
+        04b1c352aa16eada6889b80d07d8625bdc7d3d79c77dd229eafb10b878d90c91  coco3h.zip
+        d1607d1478123b61f0debbc835bb8497e236872cde406978141beb1c9c729efa  coco_fdc.zip
+        HASHES
+
+    - name: Boot 6809 floppy
+      run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6809 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6809"
+
+    - name: Boot 6309 floppy
+      if: ${{ !cancelled() }}
+      run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6309 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6309"
+
+    - name: Upload boot diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: mame-boot-results
+        path: ${{ runner.temp }}/mame-results
+        retention-days: 7
+        if-no-files-found: ignore

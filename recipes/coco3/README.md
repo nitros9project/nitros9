@@ -199,3 +199,27 @@ make INFOCOM_STORY_DIR=/path/to/stories \
   [nitros9-games](https://github.com/nitros9project/nitros9-games).
 - This recipe targets a practical default CoCo 3 floppy boot configuration.
 - Use `recipe.mak` to extend command/module selections without editing shared makefiles.
+
+## GitHub MAME Boot Tests
+
+The **Build** workflow includes an optional `mame-smoke` job. It runs only
+when started manually; pushes and pull requests run the existing build checks.
+From GitHub Actions, select **Build → Run workflow**, or use:
+
+```sh
+gh workflow run build.yml --ref main
+gh run list --workflow build.yml
+gh run watch RUN_ID
+```
+
+The job installs Ubuntu's MAME package and Xvfb, downloads checksum-verified
+ROM archives from the Color Computer Archive, and boots freshly built 6809
+and 6309 floppy images using `coco3` and `coco3h`. Each guest must write its
+expected marker file through the OS-9 shell to pass. This exercises boot,
+shell execution, and floppy writes; it does not cover the full OS command set.
+The startup used for testing omits the interactive time prompt.
+
+The job has a 20-minute limit, with each emulator invocation limited to three
+wall-clock minutes and 90 emulated seconds. The `mame-boot-results` artifact
+contains build logs, ROM audits, emulator version/output, screenshots, and test
+disks, retained for seven days. ROM archives are not uploaded.
