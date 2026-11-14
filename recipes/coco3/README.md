@@ -53,6 +53,17 @@ Each build directory keeps intermediate artifacts local:
 
 ## Level 2 Floppy Build ([`coco3/floppy`](floppy/))
 
+The shared CoCo 3 rules support both CPUs, defaulting to `CPU=6809`.
+For a Hitachi 6309 build, use the same recipe:
+
+```sh
+make -C floppy clean
+make -C floppy CPU=6309
+```
+
+Clean before switching CPUs: intermediate files and disk image names are shared
+between CPU variants. This replaces the former `recipes/coco3_6309/40d` recipe.
+
 ```sh
 cd floppy
 make
