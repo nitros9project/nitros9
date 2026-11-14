@@ -28,6 +28,8 @@ while IFS= read -r makefile; do
     make -C "$recipe_dir" --no-print-directory -n clean >/dev/null
 done < <(find recipes -mindepth 2 -maxdepth 3 -name makefile -print | sort)
 
+make -C recipes/corsham check
+
 make -C recipes/coco/floppy
 make -C recipes/coco/dw
 make -C recipes/coco3/floppy
