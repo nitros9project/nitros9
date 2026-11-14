@@ -37,7 +37,8 @@ defaults:
 
 jobs:
   quick:
-    name: Quick checks
+    name: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && 'Checked on branch push' || 'Quick checks' }}
+    # Give the skipped notice a distinct name so it cannot mask a failed push check.
     # Internal branches are checked on push; fork PRs need their own run.
     if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
