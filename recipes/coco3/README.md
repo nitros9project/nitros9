@@ -39,6 +39,7 @@ From the repository root, ensure:
 - [`dw/`](dw/) builds a CoCo 3 DriveWire-oriented disk image
 - [`dw_bitbanger_rfm/`](dw_bitbanger_rfm/) boots an RFM-only system through the CoCo serial port
 - [`dw_becker_rfm/`](dw_becker_rfm/) boots the same host-file layout through the Becker TCP port
+- [`games/`](games/README.md) builds and tests selected games with `GAME=...`
 - [`dw_mega/`](dw_mega/) builds an expanded CoCo 3 DriveWire image with third-party software
 
 Automated RFM test recipes are separate from the normal transport recipes:
@@ -195,8 +196,8 @@ make INFOCOM_STORY_DIR=/path/to/stories \
 ## Notes
 
 - Shared CoCo 3 build logic is in [`coco3.mak`](coco3.mak).
-- Game-specific recipes, including Sierra AGI support, are maintained in
-  [nitros9-games](https://github.com/nitros9project/nitros9-games).
+- Game disk images and MAME startup checks use [`games/`](games/README.md).
+  Game sources and compilation rules live in the sibling `nitros9-games` checkout.
 - This recipe targets a practical default CoCo 3 floppy boot configuration.
 - Use `recipe.mak` to extend command/module selections without editing shared makefiles.
 

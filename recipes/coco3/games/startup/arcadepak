@@ -1,0 +1,8 @@
+* Lock shell and std utils into memory
+link shell
+* Echo welcome message
+echo *       NitrOS-9  Arcade Pack       *
+echo *                                   *
+echo * Type 'thexder' to start Thexder   *
+echo * Type 'shanghai' to start Shanghai *
+echo * Type 'smash' to start Smash       *

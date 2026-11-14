@@ -1,0 +1,4 @@
+link shell
+load utilpak1
+merge /dd/sys/stdfonts
+walk </term

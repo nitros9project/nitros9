@@ -2,7 +2,8 @@ LEVEL = 2
 include ../coco3.mak
 
 run: $(DSKIMAGE)
-	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -flop1 $(DSKIMAGE)
+	python3 $(NITROS9DIR)/scripts/mame-rgb.py --machine $(MAME_MACHINE) --config cfg
+	$(MAME_BINARY) $(MAME_MACHINE) $(MAME_FLAGS) -cfg_directory cfg -flop1 $(DSKIMAGE)
 
 ifneq ($(KEYRPT),)
 KEYRPT_ARGS = $(if $(filter 0,$(KEYRPT)),0 0,$(KEYRPT))

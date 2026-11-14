@@ -19,7 +19,7 @@
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,entry,0
 
@@ -33,6 +33,7 @@ entry               lbra      Init                            initialize applica
                     lbra      Show                            display the selected application screen
 
 Init                clr       >HRS.DGBuf,u                    select the driver's normal screen
+                    clr       <HRS.Owner,u                    no application owns the device yet
                     leax      >HRS.HiRes,u                    point to the three screen descriptors
                     ldb       #9                              clear all three three-byte descriptors
 InitLoop            clr       ,x+
@@ -51,10 +52,26 @@ TermLoop            tfr       y,x                             pass the current d
                     dec       ,s                              count this descriptor
                     bne       TermLoop
                     leas      1,s                             discard the descriptor count
+                    clr       <HRS.Owner,u                    all application screens were released
                     puls      pc,y,x,d                        restore registers and return
 
 * Entry: A=SetStat code, Y=path descriptor, U=device static memory.
 SetStat             ldx       PD.RGS,y                        get the caller's register stack
+                    pshs      a                               retain the service code while checking X
+                    cmpa      #SS.AScrn
+                    bne       CheckOwner
+                    ldd       R$X,x
+                    cmpd      #$FFFF                          non-allocating ABI capability query
+                    beq       Capabilities
+CheckOwner          lda       <HRS.Owner,u
+                    beq       OwnerOK
+                    cmpa      PD.CPR,y                        path's current caller must own the screens
+                    beq       OwnerOK
+                    leas      1,s
+                    comb
+                    ldb       #E$DevBsy
+                    rts
+OwnerOK             puls      a
                     cmpa      #SS.ScInf                       CoVDG-compatible application-screen info
                     lbeq      Rt.ScInf
                     cmpa      #SS.DScrn                       display an allocated application screen
@@ -69,6 +86,12 @@ SetStat             ldx       PD.RGS,y                        get the caller's r
                     ldb       #E$UnkSvc
                     rts
 
+Capabilities        leas      1,s
+                    ldd       #2                              ownership and allocation rollback supported
+                    std       R$X,x
+                    clrb
+                    rts
+
 * Display code and 8K-block count for application screen types 0-4.
 DTabl               fcb       $14,$02                         640x192, 2 colors, 16K
                     fcb       $15,$02                         320x192, 4 colors, 16K
@@ -79,7 +102,7 @@ DTabl               fcb       $14,$02                         640x192, 2 colors,
 * Allocate and map a high-resolution application screen.
 Rt.AScrn            ldd       R$X,x                           get the requested screen type
                     cmpd      #$0004                          screen types 0-4 are supported
-                    bhi       IllArg
+                    lbhi      IllArg
                     pshs      y,x,d                           preserve path, register stack, and type
                     ldd       #$0303                          three descriptors, three bytes each
                     leay      >HRS.HiRes,u                    point to the descriptor table
@@ -99,7 +122,7 @@ AllocRetry          inca                                      count the next all
                     pshs      a                               preserve the rejected-allocation count
                     os9       F$AlHRAM                        allocate contiguous high RAM
                     puls      a
-                    bcs       DeAll                           release rejected allocations on failure
+                    lbcs      DeAll                           release rejected allocations on failure
                     pshs      b                               save the candidate starting block
                     andb      #$3F                            reduce it to its 512K-bank position
                     pshs      b
@@ -115,7 +138,12 @@ AllocRetry          inca                                      count the next all
                     ldb       ,y                              recover the accepted starting block
                     lda       1,x                             recover its block count
                     lbsr      MapBlocks                       find or map the screen in the caller's address space
-                    bcs       AllocExit
+                    bcs       AllocMapError
+                    pshs      d                               retain the mapped logical address
+                    ldx       6,s                             recover the original path descriptor
+                    lda       PD.CPR,x
+                    sta       <HRS.Owner,u                    claim only after allocation and mapping succeed
+                    puls      d
                     ldx       2,s                             recover the caller's register stack
                     std       R$X,x                           return the mapped address
                     ldb       ,s                              get the one-based descriptor number
@@ -123,6 +151,13 @@ AllocRetry          inca                                      count the next all
                     std       R$Y,x                           return the screen number
 AllocExit           leas      2,s                             discard the saved screen type
                     puls      pc,y,x
+
+AllocMapError       pshs      b                               preserve the mapping failure
+                    leax      ,y
+                    lbsr      FreeBlks                        return the newly allocated physical blocks
+                    puls      b
+                    orcc      #Carry
+                    bra       AllocExit
 
 IllArg              comb                                      report an invalid screen number or type
                     ldb       #E$IllArg
@@ -252,6 +287,14 @@ FreeBlks            lda       1,x                             get the screen's b
                     tfr       d,x
                     puls      b                               pass the block count in B
                     os9       F$DelRAM                        release the high-RAM allocation
+                    pshs      x,d,cc
+                    leax      >HRS.HiRes,u
+                    lda       ,x
+                    ora       3,x
+                    ora       6,x
+                    bne       StillOwned
+                    clr       <HRS.Owner,u                    the final release also releases ownership
+StillOwned          puls      x,d,cc
 FreeExit            rts
 
 * Display the application screen selected in device static memory.

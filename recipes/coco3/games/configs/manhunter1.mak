@@ -1,0 +1,19 @@
+GAME_SOURCE = sierra/manhunter1
+SIERRA = 1
+TERM_COLS = 32
+BOOTMODS_EXTRA = vrn.dr vi.dd
+TRACKS = 80
+DISK1 = ManHunterI_d1_80d.dsk
+DISK2 = ManHunterI_d2_80d.dsk
+DISK3 = ManHunterI_d3_80d.dsk
+DISK1_NAME = "Manhunter I Disk 1"
+DISK2_NAME = "Manhunter I Disk 2"
+DISK3_NAME = "Manhunter I Disk 3"
+TOC_INPUT = tOC_80d.txt
+SUPPORTFILES1 = logDir object picDir sndDir viewDir vol.0 vol.1 vol.2 vol.9 vol.10 vol.11 vol.12 \
+    words.tok
+SUPPORTFILES2 = object vol.0 vol.3 vol.4 vol.9 vol.10 vol.11 vol.12
+SUPPORTFILES3 = object vol.0 vol.5 vol.9 vol.10 vol.11 vol.12
+GAME_PROGRAMS = sierra mnln scrn shdw tocgen
+GAME_COMMAND = sierra
+GAME_STARTUP = $(GAME_RECIPE_DIR)/startup/sierra

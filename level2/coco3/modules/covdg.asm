@@ -1575,6 +1575,8 @@ L092B               ldd       <VD.FFSPt,u         Get current FFill stack ptr
 * Entry: Y=Ptr to path descriptor
 *        A=GetStat code
 GetStat             ldx       PD.RGS,y            Get ptr to users stack
+                    cmpa      #SS.AScrn           query shared application-screen capabilities?
+                    lbeq      GetAppABI
                     cmpa      #SS.AlfaS           Alfa Display Status?
                     beq       Rt.AlfaS
                     cmpa      #SS.ScSiz           Screen size?
@@ -1797,6 +1799,12 @@ SharedScreen        ldx       >WGlobal+G.HRSEnt   get shared application-screen 
 MissingHiRes        comb                          return Unknown Service without disturbing VTIO
                     ldb       #E$UnkSvc
                     rts
+
+GetAppABI           ldx       PD.RGS,y
+                    ldd       #$FFFF
+                    std       R$X,x
+                    lda       #SS.AScrn
+                    bra       SharedScreen
 
 IllArg              comb                          return an illegal-argument error
                     ldb       #E$IllArg

@@ -1,0 +1,4 @@
+link shell
+load utilpak1
+merge /dd/sys/stdfonts /dd/sys/stdptrs /dd/sys/stdpats_4
+solitaire </term

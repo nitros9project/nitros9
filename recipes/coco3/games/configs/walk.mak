@@ -1,0 +1,6 @@
+GAME_SOURCE = walk
+GAME_PROGRAMS = build/walk
+GAME_C3 = 1
+TERM_COLS = 40
+GAME_STARTUP = $(GAME_RECIPE_DIR)/startup/walk
+GAME_SYSFILES = sys/walk.ike

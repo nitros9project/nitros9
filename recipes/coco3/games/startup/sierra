@@ -1,0 +1,6 @@
+link shell
+* Echo welcome message
+echo * Sierra welcomes you to the *
+echo * world of 3-D adventuring.  *
+
+sierra </term

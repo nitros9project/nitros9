@@ -2172,7 +2172,9 @@ L0A5E               ldd       Gt.GXCur,y          Get X coord from graphics tabl
 ****************************
 * Get status entry point
 * Entry: A=Function call #
-GetStt              cmpa      #SS.ScSiz           get screen size?
+GetStt              cmpa      #SS.AScrn           query shared application-screen capabilities?
+                    lbeq      GetAppABI
+                    cmpa      #SS.ScSiz           get screen size?
                     beq       L0A9A               yes, go process
                     cmpa      #SS.Palet           get palettes?
                     beq       L0AA7               yes, go process
@@ -2340,6 +2342,12 @@ SharedScreen        ldx       >WGlobal+G.HRSEnt   get shared application-screen 
 MissingHiRes        comb                          return Unknown Service without disturbing VTIO
                     ldb       #E$UnkSvc
                     rts
+
+GetAppABI           ldx       PD.RGS,y
+                    ldd       #$FFFF
+                    std       R$X,x
+                    lda       #SS.AScrn
+                    bra       SharedScreen
 
 * SS.DfPal entry point
 L0B38               ldx       PD.RGS,y            get register stack pointer

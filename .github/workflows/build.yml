@@ -2,6 +2,12 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      game:
+        description: Game to boot (for example rogue, arcadepak, christmas86)
+        required: true
+        default: rogue
+        type: string
   push:
     branches:
       - main
@@ -15,6 +21,7 @@ env:
   # Path to the solution file relative to the root of the project.
   SOLUTION_FILE_PATH: .
   LANGUAGES: ${{ github.workspace }}/nitros9-languages
+  NITROS9_GAMES_DIR: ${{ github.workspace }}/nitros9-games
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
@@ -39,6 +46,13 @@ jobs:
 
     - name: Checkout
       uses: actions/checkout@v5
+
+    - name: Checkout NitrOS-9 games main
+      uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-games
+        ref: main
+        path: nitros9-games
 
     - name: Checkout NitrOS-9 languages
       uses: actions/checkout@v5
@@ -109,6 +123,13 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+
+    - name: Checkout NitrOS-9 games main
+      uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-games
+        ref: main
+        path: nitros9-games
 
     - name: Checkout NitrOS-9 languages
       uses: actions/checkout@v5
@@ -189,6 +210,27 @@ jobs:
     - name: Boot 6309 floppy
       if: ${{ !cancelled() }}
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6309 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6309"
+
+    - name: Boot selected game on both CPUs
+      env:
+        GAME_TO_TEST: ${{ inputs.game }}
+      run: |
+        for cpu in 6809 6309; do
+          xvfb-run -a make -C recipes/coco3/games GAME="$GAME_TO_TEST" CPU="$cpu" \
+            MAME_ROM_PATH="$RUNNER_TEMP/roms" check
+        done
+
+    - name: Upload game diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: game-boot-results
+        include-hidden-files: true
+        path: |
+          recipes/coco3/games/.build/**/verification/
+          recipes/coco3/games/.build/**/revisions.txt
+        retention-days: 7
+        if-no-files-found: ignore
 
     - name: Upload boot diagnostics
       if: always()

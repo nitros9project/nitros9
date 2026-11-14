@@ -1,0 +1,4 @@
+GAME_SOURCE = pacos9
+GAME_PROGRAMS = pacos9
+TERM_COLS = 40
+GAME_STARTUP = $(GAME_RECIPE_DIR)/startup/pacos9

@@ -1,0 +1,15 @@
+GAME_SOURCE = sierra/spacequest0
+SIERRA = 1
+TERM_COLS = 32
+BOOTMODS_EXTRA = vrn.dr vi.dd
+TRACKS = 80
+DISK1 = SpaceQuest0_d1_80d.dsk
+DISK2 = SpaceQuest0_d2_80d.dsk
+DISK1_NAME = "Space Quest 0 Disk 1"
+DISK2_NAME = "Space Quest 0 Disk 2"
+TOC_INPUT = tOC_80d.txt
+SUPPORTFILES1 = logDir object picDir sndDir viewDir vol.0  		vol.1 vol.2 words.tok
+SUPPORTFILES2 = object vol.0 vol.3
+GAME_PROGRAMS = sierra mnln scrn shdw tocgen
+GAME_COMMAND = sierra
+GAME_STARTUP = $(GAME_RECIPE_DIR)/startup/sierra

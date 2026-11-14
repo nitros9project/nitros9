@@ -1,0 +1,12 @@
+GAME_SOURCE = sierra/christmas86
+SIERRA = 1
+TERM_COLS = 32
+BOOTMODS_EXTRA = vrn.dr vi.dd
+TRACKS = 40
+DISK1 = Christmas86.dsk
+DISK1_NAME = "Christmas 1986"
+TOC_INPUT = tOC.txt
+SUPPORTFILES1 = logDir object picDir sndDir viewDir vol.0 words.tok
+GAME_PROGRAMS = sierra mnln scrn shdw tocgen
+GAME_COMMAND = sierra
+GAME_STARTUP = $(GAME_RECIPE_DIR)/startup/sierra

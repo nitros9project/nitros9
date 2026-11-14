@@ -12,6 +12,9 @@ export NITROS9DIR="$(pwd)"
 if [ -d "$NITROS9DIR/nitros9-languages" ]; then
     export LANGUAGES="$NITROS9DIR/nitros9-languages"
 fi
+if [ -d "$NITROS9DIR/nitros9-games" ]; then
+    export NITROS9_GAMES_DIR="$NITROS9DIR/nitros9-games"
+fi
 
 # Catch unresolved merges and makefile parse failures in every recipe, including
 # optional recipes that are too expensive or dependency-heavy for routine CI.
@@ -43,7 +46,7 @@ for cpu in 6809 6309; do
         machine=coco3h
     fi
     launch=$(make -s -C recipes/coco3/floppy -n run CPU="$cpu" \
-        MAME_BINARY=mame -o l2_coco3.dsk)
+        MAME_BINARY=mame -o l2_coco3.dsk | awk '/^mame /')
     if [[ "$launch" != "mame $machine "* ]]; then
         echo "Unexpected MAME launch command for CPU=$cpu: $launch" >&2
         exit 1
@@ -62,3 +65,10 @@ make -C recipes/picothing/l2_mega
 make -C recipes/picothing/l2_mega_6309
 make -C recipes/picothing/l2dw_mega
 make -C recipes/picothing/l2dw_mega_6309
+
+# Representative assembly, asset-heavy, and Sierra builds from games/main.
+for game in rogue arcadepak christmas86; do
+    for cpu in 6809 6309; do
+        make -C recipes/coco3/games GAME="$game" CPU="$cpu"
+    done
+done

@@ -17,6 +17,7 @@ printf 'link shell\nload utilpak1\necho NITROS9-BOOT-%s >/dd/ci-result\n' "$cpu"
 make -C "$recipe" clean
 make -C "$recipe" CPU="$cpu" STARTUP="$output/startup" > "$output/build.log" 2>&1
 cp "$recipe/l2_coco3.dsk" "$output/test.dsk"
+python3 "$NITROS9DIR/scripts/mame-rgb.py" --machine "$machine" --config "$output/cfg"
 "$mame_binary" -help > "$output/mame-version.txt"
 "$mame_binary" "$machine" -rompath "$rompath" -verifyroms > "$output/rom-audit.log" 2>&1
 # Audit the controller ROMs too (system-only audits omit expansion devices).
