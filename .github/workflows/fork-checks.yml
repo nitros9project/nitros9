@@ -1,0 +1,30 @@
+name: Fork pull request checks
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
+jobs:
+  fork:
+    name: Fork PR checks
+    # Internal branches already have Quick checks from the push workflow.
+    # A distinct name prevents a skipped PR notice from masking failed checks.
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
+    - name: Test representative system modules and regression checks
+      run: bash scripts/ci-quick.sh
