@@ -400,6 +400,7 @@ H$Show              RMB       3                   display selected application s
 HRS.Chg             EQU       $23                 nonzero requests a hardware screen update
 HRS.DGBuf           EQU       $100                selected application screen
 HRS.HiRes           EQU       $101                first screen descriptor
+HRS.Owner           EQU       $2A                 process owning this device's application screens
 HRS.NBlk            EQU       1                   block-count offset within a descriptor
 HRS.SType           EQU       2                   screen-type offset within a descriptor
 
@@ -586,7 +587,7 @@ V.MSigID            RMB       1                   mouse signal process ID       
 V.MSigSg            RMB       1                   mouse signal signal code                     $27
 V.MSmpl             RMB       1                   mouse sample rate                            $28
 V.MTime             RMB       1                   mouse timeout value                          $29
-                    RMB       1                   unused                                       $2A
+V.HRSOwner          RMB       1                   application-screen owner process            $2A
 V.MAutoF            RMB       1                   auto follow mouse flag                       $2B
 V.ParmCnt           RMB       1                   parameter count                              $2C
 V.ParmVct           RMB       2                   parameter vector                             $2D

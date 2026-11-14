@@ -2172,12 +2172,14 @@ L0A5E               ldd       Gt.GXCur,y          Get X coord from graphics tabl
 ****************************
 * Get status entry point
 * Entry: A=Function call #
-GetStt              cmpa      #SS.ScSiz           get screen size?
+GetStt              cmpa      #SS.AScrn           query application-screen ownership ABI
+                    lbeq      HiresABI
+                    cmpa      #SS.ScSiz           get screen size?
                     beq       L0A9A               yes, go process
                     cmpa      #SS.Palet           get palettes?
                     beq       L0AA7               yes, go process
                     cmpa      #SS.ScTyp           get screen type?
-                    beq       L0AD5               yes, go process
+                    lbeq      L0AD5               yes, go process
                     cmpa      #SS.FBRgs           get colors?
                     lbeq      L0AF4               yes, go process
                     cmpa      #SS.DfPal           get default colors?
@@ -2189,6 +2191,18 @@ GetStt              cmpa      #SS.ScSiz           get screen size?
                     cmpa      #SS.ScInf           screen info?
                     beq       SS.SInf             yes, go process
                     lbra      L0A96               All others illegal
+
+HiresABI            ldx       PD.RGS,y
+                    ldd       >WGlobal+G.HRSEnt
+                    beq       HiresABIMissing
+                    ldd       #$FFFF
+                    std       R$X,x
+                    ldx       >WGlobal+G.HRSEnt
+                    lda       #SS.AScrn
+                    jmp       H$SetStt,x
+HiresABIMissing     comb
+                    ldb       #E$UnkSvc
+                    rts
 
 * SS.ScInf processor ($8F)
 * New call to get info on current screen for use with direct mapped video

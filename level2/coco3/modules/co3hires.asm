@@ -19,7 +19,7 @@
 tylg                set       Sbrtn+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       1
+edition             set       2
 
                     mod       eom,name,tylg,atrv,entry,0
 
@@ -32,7 +32,8 @@ entry               lbra      Init                            initialize applica
                     lbra      SetStat                         process an application-screen SetStat
                     lbra      Show                            display the selected application screen
 
-Init                clr       >HRS.DGBuf,u                    select the driver's normal screen
+Init                clr       <HRS.Owner,u
+                    clr       >HRS.DGBuf,u                    select the driver's normal screen
                     leax      >HRS.HiRes,u                    point to the three screen descriptors
                     ldb       #9                              clear all three three-byte descriptors
 InitLoop            clr       ,x+
@@ -40,7 +41,8 @@ InitLoop            clr       ,x+
                     bne       InitLoop
                     rts
 
-Term                pshs      y,x,d                           preserve the caller's working registers
+Term                clr       <HRS.Owner,u
+                    pshs      y,x,d                           preserve the caller's working registers
                     clr       >HRS.DGBuf,u                    no application screen remains selected
                     leay      >HRS.HiRes,u                    point to the first screen descriptor
                     ldb       #3                              visit all three descriptors
@@ -54,7 +56,28 @@ TermLoop            tfr       y,x                             pass the current d
                     puls      pc,y,x,d                        restore registers and return
 
 * Entry: A=SetStat code, Y=path descriptor, U=device static memory.
-SetStat             ldx       PD.RGS,y                        get the caller's register stack
+SetStat             cmpa      #SS.AScrn
+                    bne       OwnerCheck
+                    ldx       PD.RGS,y
+                    ldd       R$X,x
+                    cmpd      #$FFFF                          non-allocating capability query
+                    bne       AllocateQueryDone
+                    ldd       #2
+                    std       R$X,x
+                    clrb
+                    rts
+AllocateQueryDone   lda       #SS.AScrn
+OwnerCheck          pshs      a
+                    lda       <HRS.Owner,u
+                    beq       ScreenOwnerOK
+                    cmpa      PD.CPR,y
+                    beq       ScreenOwnerOK
+                    comb
+                    ldb       #E$DevBsy                        another process owns this terminal's screens
+                    leas      1,s
+                    rts
+ScreenOwnerOK       puls      a
+                    ldx       PD.RGS,y                        get the caller's register stack
                     cmpa      #SS.ScInf                       CoVDG-compatible application-screen info
                     lbeq      Rt.ScInf
                     cmpa      #SS.DScrn                       display an allocated application screen
@@ -115,12 +138,22 @@ AllocRetry          inca                                      count the next all
                     ldb       ,y                              recover the accepted starting block
                     lda       1,x                             recover its block count
                     lbsr      MapBlocks                       find or map the screen in the caller's address space
-                    bcs       AllocExit
+                    bcs       AllocMapError
+                    pshs      d
+                    ldx       6,s                             recover the path descriptor
+                    lda       PD.CPR,x
+                    sta       <HRS.Owner,u                    claim only after successful allocation/mapping
+                    puls      d
                     ldx       2,s                             recover the caller's register stack
                     std       R$X,x                           return the mapped address
                     ldb       ,s                              get the one-based descriptor number
                     clra
                     std       R$Y,x                           return the screen number
+                    bra       AllocExit
+AllocMapError       pshs      cc,b
+                    tfr       y,x
+                    lbsr      FreeBlks                          release allocation after a mapping failure
+                    puls      cc,b
 AllocExit           leas      2,s                             discard the saved screen type
                     puls      pc,y,x
 
@@ -252,7 +285,14 @@ FreeBlks            lda       1,x                             get the screen's b
                     tfr       d,x
                     puls      b                               pass the block count in B
                     os9       F$DelRAM                        release the high-RAM allocation
-FreeExit            rts
+FreeExit            pshs      x,a
+                    leax      >HRS.HiRes,u
+                    lda       ,x
+                    ora       3,x
+                    ora       6,x
+                    bne       FreeOwnerRet
+                    clr       <HRS.Owner,u
+FreeOwnerRet        puls      x,a,pc
 
 * Display the application screen selected in device static memory.
 Show                ldb       >HRS.DGBuf,u                    get the selected screen number
