@@ -42,5 +42,5 @@ endif
 endif
 
 MAME_BINARY  ?= mame
-MAME_MACHINE ?= coco3
+MAME_MACHINE ?= $(if $(filter 6309,$(CPU)),coco3h,coco3)
 MAME_FLAGS   ?= -rompath $(MAME_ROM_PATH) -window -nothrottle -skip_gameinfo -autoboot_delay 5 -autoboot_command "DOS\n" -ext fdc -ext:fdc:wd17xx:0 525qd
