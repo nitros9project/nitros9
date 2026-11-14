@@ -2,6 +2,8 @@
 #
 # Build the primary NitrOS-9 product recipes from source
 #
+set -euo pipefail
+
 ls -al
 export NITROS9DIR="$(pwd)"
 # The workflow checks nitros9-languages out inside the workspace, but this
@@ -27,6 +29,27 @@ make -C recipes/coco/floppy
 make -C recipes/coco/dw
 make -C recipes/coco3/floppy
 make -C recipes/coco3/dw
+
+# CPU variants share intermediate paths, so rebuild from clean directories.
+for recipe in recipes/coco3/floppy recipes/coco3/dw; do
+    make -C "$recipe" clean
+    make -C "$recipe" CPU=6309
+done
+
+# Check launcher selection without starting MAME or rebuilding the disk image.
+for cpu in 6809 6309; do
+    machine=coco3
+    if [ "$cpu" = 6309 ]; then
+        machine=coco3h
+    fi
+    launch=$(make -s -C recipes/coco3/floppy -n run CPU="$cpu" \
+        MAME_BINARY=mame -o l2_coco3.dsk)
+    if [[ "$launch" != "mame $machine "* ]]; then
+        echo "Unexpected MAME launch command for CPU=$cpu: $launch" >&2
+        exit 1
+    fi
+done
+
 make -C recipes/picothing/l1
 make -C recipes/picothing/l1_6309
 make -C recipes/picothing/l1dw
