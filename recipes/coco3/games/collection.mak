@@ -13,11 +13,14 @@ PORTDEFSDIR =
 SYSTEXT =
 CMDS_BASE = shell grfdrv utilpak1 load link echo merge display
 CMDS_EXTRA = games
-RBF = rbf.mn emudsk.dr dd_emu.dd h0_emu.dd rb1773.dr d0_40d.dd d1_40d.dd
+RBF = rbf.mn emudsk.dr dd_emu.dd h0_emu.dd
 BOOTMODS_EXTRA = g40.dt vrn.dr vi.dd ftdd.dd
 RECIPE_DEPS = collection.json $(NITROS9DIR)/scripts/game-collection.py
 RECIPE_OUTPUTS = games.vhd games-boot.dsk
 include $(GAME_RECIPE_DIR)/../coco3.mak
+
+# Removing a module from the list must also invalidate an existing bootfile.
+bootfile: $(GAME_RECIPE_DIR)/collection.mak
 
 prepare:
 	python3 $(NITROS9DIR)/scripts/game-collection.py prepare --recipe "$(GAME_RECIPE_DIR)" \
@@ -53,7 +56,8 @@ MAME_FLAGS ?= -window -skip_gameinfo
 VHD_TEST_GAME ?= sokoban
 ensure-boot:
 	@for source in "$(GAME_RECIPE_DIR)/collection.mak" "$(GAME_RECIPE_DIR)/menu.asm" \
-		"$(NITROS9DIR)/scripts/game-collection.py" "$(GAME_RECIPE_DIR)/../coco3.mak"; do \
+		"$(NITROS9DIR)/scripts/game-collection.py" "$(NITROS9DIR)/scripts/game-layout.py" \
+		"$(NITROS9DIR)/scripts/install-game.py" "$(GAME_RECIPE_DIR)/../coco3.mak"; do \
 		if test "$$source" -nt games-boot.dsk; then $(MAKE) update-boot || exit $$?; break; fi; \
 	done
 
@@ -75,6 +79,7 @@ update-menu:
 
 update-boot:
 	$(MAKE) libs kernelfile bootfile
+	python3 $(NITROS9DIR)/scripts/game-collection.py migrate-layout --manifest collection.json --disk games.vhd
 	python3 $(NITROS9DIR)/scripts/game-collection.py refresh-launchers --manifest collection.json --disk games.vhd
 	python3 $(NITROS9DIR)/scripts/game-collection.py refresh-sierra-tocs --manifest collection.json --disk games.vhd
 	$(OS9GEN) games.vhd -t=kerneltrack

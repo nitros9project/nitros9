@@ -3,7 +3,7 @@ GAME_PROGRAMS = rogue
 GAME_COMMAND = rogue
 TERM_COLS = 40
 GAME_ROOTFILES = rogue.dat rogue.hlp rogue.scr rogue.chr
-GAME_DATA_DIR = ROGUE
+GAME_DATA_DIR = GAMES/ROGUE
 
 GAME_STARTUP = $(GAME_RECIPE_DIR)/startup/rogue
 GAME_REPLAY = $(NITROS9DIR)/scripts/rogue-replay.lua
