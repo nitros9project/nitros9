@@ -31,6 +31,60 @@ Sierra uses application-screen ABI version 2, provided by CoWin/CoVDG and
 Co3Hires. The driver reports its capabilities without allocating a screen,
 protects allocated screens by process ID, and releases RAM if mapping fails.
 
+## CoCo SDC collection
+
+Build the menu and selected games into one native SDC image:
+
+```sh
+make -C recipes/coco3/games sdc
+make -C recipes/coco3/games check-sdc GAMES="rogue kyumgai"
+```
+
+`GAMES` defaults to all locally available game sources, just as with `vhd`.
+Use `CPU=6309` only for a CoCo with a 6309 installed; the default is 6809.
+The output is `.build/collection-sdc/CPU/games.dsk` (128 MiB by default).
+It has an 80-column menu, an SDC kernel track and OS9Boot, and native
+`rbf`/`rbsuper`/`llcocosdc` storage. `/dd` and `/sd0` refer to mounted SDC drive 0;
+`/sd1` refers to drive 1. No physical floppy or DriveWire server is required.
+The EmuDsk collection and its saved games live in a different build directory.
+`clean-sdc` removes only the selected CPU's SDC build.
+
+Copy `games.dsk` to the root of the SD card. On the CoCo 3, with the SDC
+selected and SDC-DOS running:
+
+```basic
+DRIVE 0,"GAMES.DSK"
+DOS
+```
+
+The image contains the OS-9 filesystem and the individual game files. Keep
+it writable for saves. Game RAM requirements still apply: the SDC adds storage,
+not RAM; choose games appropriate for your CoCo's installed memory. The Sierra
+collection tests use 2 MiB in MAME and do not establish 512 KiB compatibility.
+The [CoCo SDC manual](https://colorcomputerarchive.com/repo/Documents/Manuals/Hardware/CoCo%20SDC%20User%20Guide%20v4%20%28Darren%20Atkinson%29.pdf)
+describes mounting images and the native LBA interface used for large images.
+
+`check-sdc` builds the image, verifies the kernel-track location, OS9Boot link,
+SDC drivers/descriptors, menu and game executables, then runs ToolShed `os9 dcheck`.
+It saves `sdc-check.json` alongside the image. This is a structural image check;
+it does not claim to emulate SDC hardware or verify a real CoCo boot. MAME 0.288
+has no CoCo SDC cartridge device. Use the existing `check-vhd` target for the
+EmuDsk game-launch regression, and test this image on the actual SDC.
+
+Validated on 2026-11-15: all 31 available games in the 6809 image, and Rogue
+plus Kyum-Gai in the 6309 image, passed the structural checks and `dcheck`.
+A deliberately cleared boot pointer was rejected. Boot/menu updates preserved
+a saved-file sentinel. The existing EmuDsk Rogue launch also passed in MAME
+with 512 KiB; an actual SDC boot remains to be tested.
+
+As with `vhd`, rebuilding replaces the generated image. To update just the
+boot modules or menu of an existing SDC image while preserving game files:
+
+```sh
+make -C recipes/coco3/games update-sdc-boot
+make -C recipes/coco3/games update-sdc-menu
+```
+
 ## Sources and tools
 
 The defaults use sibling `nitros9-games` and `nitros9-languages` checkouts.
