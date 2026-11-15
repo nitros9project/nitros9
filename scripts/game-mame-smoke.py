@@ -54,10 +54,13 @@ def main():
     disk = output / 'test.dsk'
     shutil.copyfile(args.disk, disk)
     command = [args.mame, machine, '-rompath', str(args.rompath.resolve())]
+    # -verifyroms audits every alternative controller BIOS, including ones this
+    # test never selects. Keep the diagnostic, but let the real launch below
+    # enforce its required ROMs (and retain check=True on that subprocess).
     with (output / 'rom-audit.log').open('w') as log:
-        subprocess.run(command + ['-verifyroms'], stdout=log, stderr=subprocess.STDOUT, check=True)
+        subprocess.run(command + ['-verifyroms'], stdout=log, stderr=subprocess.STDOUT, check=False)
         subprocess.run([args.mame, 'coco_fdc', '-rompath', str(args.rompath.resolve()), '-verifyroms'],
-                       stdout=log, stderr=subprocess.STDOUT, check=True)
+                       stdout=log, stderr=subprocess.STDOUT, check=False)
     # These are the Level 2 OS-9 D.PrcDBT, P$PModul, P$DATImg and M$Name
     # layouts from defs/os9.d. Read system memory through task 0's GIME map,
     # then read each primary module through that process's saved DAT image.
