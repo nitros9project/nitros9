@@ -1265,7 +1265,7 @@ S.SysIRQ
                     lda       #1        ; get task 1
                     ora       <D.TINIT  ; merge the task bit into the shadow version
                     sta       <D.TINIT  ; update the shadow register
-                    sta       >DAT.Task ; save to the DAT as well
+IRQTaskSwitch       sta       >DAT.Task ; save to the DAT as well
                   ENDC
                     bra       DoneIRQ   ; check for error and exit
 
@@ -1605,6 +1605,17 @@ eom                 equ       *         ; define assembler symbol eom
                   ENDC
 
 SWIStack
+                  IFNE    coco3+immunity
+                  IFNE    H6309
+                  IFNE    SWIStack-$0EDD
+                    error     CoCo 3 6309 register stack must be at $FEDD
+                  ENDC
+                  ELSE
+                  IFNE    SWIStack-$0EDF
+                    error     CoCo 3 6809 register stack must be at $FEDF
+                  ENDC
+                  ENDC
+                  ENDC
                     fcc       /REGISTER STACK/    same # bytes as R$Size for 6809
                   IFNE    H6309   ; begin conditional assembly for H6309
                     fcc       /63/                if 6309, add two more spaces
