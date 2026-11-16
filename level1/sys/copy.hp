@@ -3,7 +3,8 @@ Syntax: Copy [<opts>] <srcpath> [<dstpath>] [<opts>]
 Usage : Copies files
 Opts  :
   -a = abort on error
-  -p = don't print files copied (use with -w)
+  -d = copy directories and everything in them
+  -p = don't print files copied (use with -w or -d)
   -r = rewrite destination
   -s = single drive copy 
   -v = verify the copy

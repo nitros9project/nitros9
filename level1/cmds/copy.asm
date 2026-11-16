@@ -12,6 +12,9 @@
 *
 *  11      2003/01/11  Boisy G. Pitre
 * Added useful options, made more robust.
+*
+*  12      2026/11/16  Mark Murray
+* Added -d to copy a directory and everything in it.
 
 ;;; copy
 ;;;
@@ -68,6 +71,7 @@
 
                     ifp1
                     use       defsfile
+                    use       readdir.d
                     endc
 
 DOHELP              set       0
@@ -75,13 +79,17 @@ DOHELP              set       0
 tylg                set       Prgrm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             set       11
+edition             set       12
 
                     mod       eom,name,tylg,atrv,start,size
 
 STACKSZ             equ       128                 estimated stack size
 PARMSZ              equ       256                 estimated parameter size
 DDIRBSIZ            equ       64                  destination directory buffer size
+PATHMAX             equ       256                 longest pathlist -d builds
+TREESTK             equ       640                 stack the -d tree walk takes from the copy buffer
+TREEMRG             equ       128                 stack a level needs below its frame
+FRAMESZ             equ       9                   bytes of stack TreeLevel keeps for each level
 
                     org       0
 rdbufptr            rmb       2
@@ -109,16 +117,28 @@ lstfopln            rmb       2                   length of last file atteppted 
 srcattr             rmb       1
 writemsb            rmb       2
 writelsb            rmb       2
+treeopt             rmb       1                   nonzero when -d was given
+lasterr             rmb       1                   last error reported by -d
+tattr               rmb       1                   attributes for the next directory made
+cfsp                rmb       2                   stack pointer on entry to CopyFile
+stklim              rmb       2                   lowest stack pointer the tree walk allows
+srcend              rmb       2                   address of the carriage return ending srcbuf
+dstend              rmb       2                   address of the carriage return ending dstbuf
+argptr              rmb       2                   next command line argument for -d
+wdirend             rmb       2                   end of the -w directory in wdest
 fdbufcpy            rmb       16
 optbuf              rmb       32
 wdest               rmb       DDIRBSIZ            portion after '-w='
                     rmb       DDIRBSIZ            additional space
+srcbuf              rmb       PATHMAX             source pathlist for -d
+dstbuf              rmb       PATHMAX             destination pathlist for -d
+record              rmb       RD.Size             directory entry for -d
 * Note: copy buffer must come just before the stack
 vfybuff             rmb       256                 verify buffer
                     ifgt      Level-1
 copybuff            rmb       8*1024              8K default buffer for Level 2
                     else
-copybuff            rmb       512                 512 byte default buffer for Level 1
+copybuff            rmb       512+TREESTK         512 byte default buffer for Level 1, and room for -d
                     endc
                     rmb       STACKSZ+PARMSZ
 size                equ       .
@@ -136,6 +156,8 @@ HlpMsg              fcb       C$LF
                     fcc       /Use: Copy [<opts>] <srcpath> [<dstpath>] [<opts>]/
                     fcb       C$LF
                     fcc       /  -a = abort on error/
+                    fcb       C$LF
+                    fcc       /  -d = copy directories and everything in them/
                     fcb       C$LF
                     fcc       /  -p = don't print files copied (use with -w)/
                     fcb       C$LF
@@ -222,8 +244,12 @@ GetDash2            ldd       ,x+                 load option char and char foll
                     inc       <single
                     lbra      FixCmdLn
 IsItA               cmpa      #'A                 abort option?
-                    bne       IsItP               branch if not
+                    bne       IsItD               branch if not
                     inc       <abortflg
+                    lbra      FixCmdLn
+IsItD               cmpa      #'D                 directory tree option?
+                    bne       IsItP               branch if not
+                    inc       <treeopt
                     lbra      FixCmdLn
 IsItP               cmpa      #'P                 supress output?
                     bne       IsItV               branch if not
@@ -328,6 +354,8 @@ PlugIt2             ldy       <wfileptr           get address past xxxx/ (specif
 * At this point options are processed, so we need to start copying files
 CpyFiles            tst       <filecnt            we should have at least one file on cmdline
                     lbeq      ShowHelp            if not, exit with error
+                    tst       <treeopt            -d specified?
+                    lbne      TreeMain            branch if so
                     ldx       <parmptr            get our parameter pointer off stack
                     lbsr      SkipSpcs            skip any leading spaces
                     tst       <wopt               -w specified?
@@ -335,7 +363,11 @@ CpyFiles            tst       <filecnt            we should have at least one fi
                     stx       <srcfname           else save start of parameter pointer as next file
                     clr       <single             no single option with -w
 L03BE               bsr       CopyToW             copy file at <srcfname to -w buffer
-                    bra       OpenSrc
+CopyNext            lbsr      CopyFile            copy one file
+                    lbcs      ShutDown            report the error
+                    tst       <wopt               -w specified?
+                    lbeq      ExitOk              branch if not
+                    bra       L03BE               copy the next file
 * This code handles single file copy (i.e. copy file1 file2)
 * or a single disk copy (i.e. copy -s abc)
 L03C5               lbsr      GetSDFl             else get source/destination files
@@ -346,11 +378,13 @@ L03C5               lbsr      GetSDFl             else get source/destination fi
 * test for right number of files
 L03D4               lda       <filecnt            get total file count
                     cmpa      #2                  should be no more than two files
-                    ble       OpenSrc
-                    leax      TooMany,pcr
+                    ble       CopyNext
+ShowTooMany         leax      TooMany,pcr
                     lbsr      WrLine
                     lbra      ExitOk
-OpenSrc
+* Copy the file named at <srcfname to the one named at <dstfptr. Return
+* with carry set and B=error on failure, with both paths closed.
+CopyFile            sts       <cfsp               save the stack for an error return
                     ldd       #$0000
                     std       <writemsb           clear writemsb/lsb
                     std       <writelsb
@@ -369,7 +403,7 @@ OpenSrc
                     lbsr      SkipNSpc            else skip over failed filename
                     lbsr      SkipSpcs            and any trailing spaces
 OpenFail            stx       <srcfname           save updated pathlist pointer (points to next file on cmd line)
-                    lbra      ShutDown
+                    lbra      CFFail
 L03FA               sta       <srcpath            save source path
                     pshs      a                   save path
                     lbsr      SkipSpcs            destroy any leading spaces
@@ -392,7 +426,7 @@ L041B               lda       <srcpath            get source path
                     leax      <optbuf,u           point to options buffer
                     clrb                          was: ldb #SS.Opt
                     os9       I$GetStt            get path options
-                    lbcs      ShutDown            branch if error
+                    lbcs      CFFail            branch if error
                     lda       ,x                  get device type
                     sta       <devtyp             save
                     ldb       #READ.+WRITE.+EXEC.+PREAD.
@@ -402,7 +436,7 @@ L041B               lda       <srcpath            get source path
                     lda       <srcpath            get source path
                     ldb       #SS.Size
                     os9       I$GetStt            get size
-                    lbcs      ShutDown
+                    lbcs      CFFail
                     stx       <srcflsiz           save file size
                     stu       <srcflsiz+2
                     puls      u,x                 restore regs
@@ -421,15 +455,16 @@ L0450               ldx       <dstfptr            point to destination file
                     os9       I$Create            create file
                     bcc       L048B               branch if create ok
                     tst       <rewrite            rewrite flag set?
-                    lbeq      ShutDown            branch if no
+                    lbeq      CFFail            branch if no
                     cmpb      #E$CEF              file already exists?
-                    lbne      ShutDown            branch if any other error
+                    lbne      CFFail            branch if any other error
 L047A               os9       I$Delete            delete file first
-                    lbcs      ShutDown            branch if error
+                    lbcs      CFFail            branch if error
                     bra       L0450               else try opening again
 L048B               sta       <dstpath            save destination path
-                    tst       <wopt               w option specified?
-                    beq       GetOpts             branch iff not
+                    ldb       <wopt               w option specified?
+                    orb       <treeopt            or d option?
+                    beq       GetOpts             branch if neither
                     tst       <quiet              p option specified?
                     bne       GetOpts             branch if so
                     pshs      a                   else save dest path on stack
@@ -448,7 +483,7 @@ L048B               sta       <dstpath            save destination path
 GetOpts             leax      <optbuf,u           point to option buffer
                     clrb                          was: ldb #SS.Opt
                     os9       I$GetStt            get options
-                    lbcs      ShutDown            branch if error
+                    lbcs      CFFail            branch if error
                     ldb       ,x                  get device type
                     cmpb      #DT.RBF             rbf?
                     bne       CopyLoop            if not rbf device, don't get file size or fd seg
@@ -461,7 +496,7 @@ L04B4               lda       <devtyp             get device type
                     ldx       <srcflsiz           get file size of source
                     ldu       <srcflsiz+2
                     os9       I$SetStt            and set dest file to same size
-                    lbcs      ShutDown            branch if error
+                    lbcs      CFFail            branch if error
                     puls      u                   restore U
                     lda       <dstpath            get dest path
                     leax      <fdbufcpy,u         point to file desc. buffer
@@ -480,7 +515,7 @@ CopyLoop            ldx       <rdbufptr           get ptr to read buffer
                     lbsr      SwapDsk             check for single disk copy and prompt if so
                     lda       <dstpath            get dest path
                     os9       I$Write             write it out!
-                    lbcs      ShutDown            branch if error
+                    lbcs      CFFail            branch if error
                     tst       <vopt               verify on?
                     beq       chkeof
                     lbsr      DoVerify
@@ -491,20 +526,32 @@ chkeof              lda       <srcpath            get source path
                     cmpb      #E$EOF              end of file error?
                     beq       L0561               branch if so
 L0558               cmpb      #E$EOF              end of file rror?
-                    bne       ShutDown            branch if not
+                    bne       CFFail            branch if not
                     lda       #$01                prompt destination flag
                     lbsr      SwapDsk             check for single drive copy and prompt if necessary
 L0561               lda       <dstpath            get destination path
                     os9       I$Close             close that file
-                    bcs       ShutDown            branch if error
+                    bcs       CFFail            branch if error
                     clr       <dstpath            else clear dest path
                     lda       <srcpath            get source path
                     os9       I$Close             close it
-                    bcs       ShutDown            branch if error
+                    bcs       CFFail            branch if error
                     clr       <srcpath            clear src path
-                    tst       <wopt               -w specified
-                    lbeq      ExitOk              branch if not
-                    lbra      L03BE
+                    clrb                          no error
+                    rts
+CFFail              lds       <cfsp               discard whatever the copy left on the stack
+                    pshs      b                   save the error
+                    lda       <srcpath            get source path
+                    beq       CFFail2             branch if none
+                    os9       I$Close             close it
+CFFail2             lda       <dstpath            get dest path
+                    beq       CFFail3             branch if none
+                    os9       I$Close             close it
+CFFail3             clr       <srcpath            clear source path
+                    clr       <dstpath            and destination
+                    puls      b                   restore the error
+                    orcc      #Carry              return it
+                    rts
 
 * Entry: X = ptr to data to write, Y = length
 WritSOut            lda       #$01                standard out
@@ -515,26 +562,7 @@ PListErr            leax      >PLIncmp,pcr
                     bsr       WrLine
                     bra       ExitOk
 
-ShutDown            pshs      b
-                    lda       <srcpath            get source path
-                    beq       L05AA               branch if none
-                    os9       I$Close             close it
-L05AA               lda       <dstpath            get dest path
-                    beq       L05B1               branch if none
-                    os9       I$Close             close it
-L05B1               clr       <srcpath            clear source path
-                    clr       <dstpath            and destination
-                    leax      >CantCpy,pcr        else show can't copy error
-                    ldy       #CantCpyL
-                    bsr       WritSOut            write out
-                    ldx       <lstfopen           show filename that failed
-                    ldy       <lstfopln           get length
-                    bsr       WritSOut
-                    leax      >SpcDsh,pcr
-                    ldy       #SpcDshL
-                    bsr       WritSOut            write out
-                    puls      b
-PrintErr            os9       F$PErr              print error
+ShutDown            bsr       ShowFail            report the failure
                     tst       <wopt               -w used?
                     beq       ExitOk              branch if not
                     tst       <abortflg           abort flag set?
@@ -554,6 +582,21 @@ AskAgain            leax      >Cont,pcr           point to continue prompt
                     beq       ExitOk              branch if so
                     bra       AskAgain            else ask again
 
+* B=error. Report it against the file named at <lstfopen.
+ShowFail            pshs      b                   save the error
+                    leax      >CantCpy,pcr        else show can't copy error
+                    ldy       #CantCpyL
+                    bsr       WritSOut            write out
+                    ldx       <lstfopen           show filename that failed
+                    ldy       <lstfopln           get length
+                    bsr       WritSOut
+                    leax      >SpcDsh,pcr
+                    ldy       #SpcDshL
+                    bsr       WritSOut            write out
+                    puls      b                   restore the error
+                    os9       F$PErr              print error
+                    rts
+
 ShowHelp            equ       *
                     ifne      DOHELP
                     leax      >HlpMsg,pcr         point to help message
@@ -565,7 +608,7 @@ ExitOk              clrb                          clear carry
 Exit                os9       F$Exit              and exit
 
 * Write line passed in X
-WrLine              ldy       #$00A0
+WrLine              ldy       #PATHMAX
 WrNBytes            lda       #$01
                     os9       I$WritLn
                     rts
@@ -731,6 +774,356 @@ L06D2               lda       -$02,x
                     beq       BadPName
                     bra       ParseOk
 
+* -d: copy each source, and everything in it if it is a directory. Each
+* failure is reported and copying carries on, unless -a was given; the
+* exit status is the last error.
+TreeMain            tst       <single             single drive copy?
+                    lbne      ShowHelp            -s can't be combined with -d
+                    ldd       <bufsiz             get the copy buffer size
+                    subd      #TREESTK            give the tree walk room for its stack
+                    bhi       TreeMem             branch if a buffer is left
+                    ldb       #E$NoRAM            not enough memory
+                    lbra      Exit                exit with the error
+TreeMem             std       <bufsiz             save the smaller buffer size
+                    ldx       <wfileptr           get the end of the -w directory
+                    stx       <wdirend            keep it, as the progress message uses wfileptr
+                    addd      <rdbufptr           get the end of the copy buffer
+                    std       <stklim             the stack must stay above it
+                    ldx       <parmptr            get the command line
+                    lbsr      SkipSpcs            skip any leading spaces
+                    tst       <wopt               -w specified?
+                    bne       TreeW               branch if so
+                    lda       <filecnt            get the number of names
+                    cmpa      #2                  a source and a destination?
+                    lbhi      ShowTooMany         branch if there are more
+                    lbne      ShowHelp            branch if there is only one
+                    leay      srcbuf,u            point to the source buffer
+                    lbsr      ArgCopy             copy the source name
+                    sty       <srcend             save the end of the source
+                    bcs       TreeSrcBad          branch if it is too long
+                    leay      dstbuf,u            point to the destination buffer
+                    lbsr      ArgCopy             copy the destination name
+                    sty       <dstend             save the end of the destination
+                    bcs       TreeDstBad          branch if it is too long
+                    lbsr      CopyTree            copy the source
+TreeDone            ldb       <lasterr            exit with the last error
+                    lbra      Exit
+TreeSrcBad          lbsr      SetSrcName          report against the source
+                    bra       TreeBad
+TreeDstBad          lbsr      SetDstName          report against the destination
+TreeBad             lbsr      TreeFail            report the error
+                    bra       TreeDone            and exit
+TreeW               lda       ,x                  get the next character
+                    cmpa      #C$CR               end of the command line?
+                    beq       TreeDone            branch if so
+                    leay      srcbuf,u            point to the source buffer
+                    lbsr      ArgCopy             copy the source name
+                    sty       <srcend             save the end of the source
+                    stx       <argptr             save the rest of the command line
+                    bcs       TreeWBad            branch if it is too long
+                    lbsr      WMake               make the destination in the -w directory
+                    bcs       TreeWBad            branch if that failed
+                    lbsr      CopyTree            copy the source
+TreeWNext           ldx       <argptr             get the rest of the command line
+                    bra       TreeW               and copy the next source
+TreeWBad            lbsr      SetSrcName          report against the source
+                    lbsr      TreeFail            report the error
+                    bra       TreeWNext           and carry on
+
+* Copy a name from the command line at X to the buffer at Y, dropping
+* trailing separators. Return Y=the carriage return ending it, X past
+* it and any spaces, and carry set with B=E$BPNam if it is too long.
+ArgCopy             pshs      y                   save the start of the buffer
+ArgCopy2            lda       ,x                  get a character of the name
+                    cmpa      #C$SPAC             end of the name?
+                    beq       ArgStrip            branch if so
+                    cmpa      #C$COMA             end of the name?
+                    beq       ArgStrip            branch if so
+                    cmpa      #C$CR               end of the name?
+                    beq       ArgStrip            branch if so
+                    sta       ,y+                 copy the character
+                    leax      1,x                 move to the next character
+                    tfr       y,d                 get the end of the copy
+                    subd      ,s                  get its length
+                    cmpd      #PATHMAX-1          has it filled the buffer?
+                    blo       ArgCopy2            branch if not
+                    lda       #C$CR               get a carriage return
+                    sta       ,y                  end the name with it
+                    lbsr      SkipNSpc            skip the rest of the name
+                    lbsr      SkipSpcs            and any spaces after it
+                    leas      2,s                 discard the start of the buffer
+                    ldb       #E$BPNam            the pathlist is too long
+                    orcc      #Carry              return the error
+                    rts
+ArgStrip            cmpy      ,s                  is the name empty?
+                    beq       ArgEnd              branch if so
+                    lda       -1,y                get its last character
+                    cmpa      #PDELIM             is it a trailing separator?
+                    bne       ArgEnd              branch if not
+                    leay      -1,y                drop the separator
+                    bra       ArgStrip            and look for another
+ArgEnd              lda       #C$CR               get a carriage return
+                    sta       ,y                  end the name with it
+                    lbsr      SkipSpcs            skip any spaces after it
+                    leas      2,s                 discard the start of the buffer
+                    clrb                          no error
+                    rts
+
+* With -w, the destination is the -w directory followed by the last
+* name of the source. A last name of only dots is refused.
+WMake               ldx       <srcend             get the end of the source
+                    leay      srcbuf,u            get the start of the source
+                    pshs      y                   save it
+WMake2              cmpx      ,s                  at the start of the source?
+                    beq       WMake3              branch if so
+                    lda       ,-x                 get the previous character
+                    cmpa      #PDELIM             is it a separator?
+                    bne       WMake2              branch if not
+                    leax      1,x                 point to the last name
+WMake3              leas      2,s                 discard the start of the source
+                    pshs      x                   save the start of the last name
+WMake4              cmpx      <srcend             has the whole last name been checked?
+                    beq       WMakeBad            branch if it was empty or only dots
+                    lda       ,x+                 get a character of the last name
+                    cmpa      #'.                 is it a dot?
+                    beq       WMake4              branch if so
+                    leax      wdest,u             point to the -w directory
+                    leay      dstbuf,u            point to the destination buffer
+WMake5              cmpx      <wdirend            copied the whole directory?
+                    beq       WMake6              branch if so
+                    lda       ,x+                 get a character of it
+                    sta       ,y+                 copy it
+                    bra       WMake5              and the next
+WMake6              puls      x                   get the start of the last name
+WMake7              cmpx      <srcend             copied the whole last name?
+                    beq       WMake8              branch if so
+                    lda       ,x+                 get a character of it
+                    sta       ,y+                 copy it
+                    pshs      y                   save the end of the copy
+                    leay      dstbuf+PATHMAX-1,u  get the last usable byte
+                    cmpy      ,s                  has the copy reached it?
+                    puls      y                   restore the end of the copy
+                    bls       WMakeLong           branch if so
+                    bra       WMake7              and copy the next character
+WMake8              lda       #C$CR               get a carriage return
+                    sta       ,y                  end the destination with it
+                    sty       <dstend             save its end
+                    clrb                          no error
+                    rts
+WMakeBad            leas      2,s                 discard the start of the last name
+WMakeLong           ldb       #E$BPNam            refuse the name
+                    orcc      #Carry              return the error
+                    rts
+
+* Copy the source in srcbuf to the destination in dstbuf: a file is
+* copied as usual, a directory is made and everything in it copied.
+CopyTree            bsr       OpenSrcDir          open the source as a directory
+                    lbcs      CopyBufs            if it isn't one, copy it as a file
+                    pshs      a                   save the directory path
+                    leax      record,u            point to the options buffer
+                    ldb       #SS.Opt             get the path options
+                    os9       I$GetStt
+                    ldb       #^SHARE.            default directory attributes
+                    bcs       CopyTree2           use them if there are no options
+                    lda       record,u            get the device type
+                    cmpa      #DT.RBF             is it RBF?
+                    bne       CopyTree2           use the defaults if not
+                    ldb       record+PD.ATT-PD.OPT,u get the directory's attributes
+CopyTree2           stb       <tattr              use them for the new directory
+                    puls      a                   restore the directory path
+                    bsr       MakeDst             make the destination directory
+                    lbcc       TreeLevel           copy what is in it if that went well
+                    pshs      b                   save the error
+                    os9       I$Close             close the source directory
+                    puls      b                   restore the error
+                    bra       TreeFail            report it
+
+* Open srcbuf as a directory. Return A=path.
+OpenSrcDir          lda       #DIR.+READ.         open it as a directory
+                    ora       <srcmode            from the execution directory with -x
+                    leax      srcbuf,u            point to the source
+                    os9       I$Open
+                    rts
+
+* Make the directory dstbuf with attributes <tattr; a directory that
+* already exists is used as it is, anything else is an error. Preserves A.
+MakeDst             pshs      a                   save A
+                    leax      dstbuf,u            point to the destination
+                    ldb       <tattr              get the attributes
+                    os9       I$MakDir            make the directory
+                    bcc       MakeDst2            branch if it went well
+                    cmpb      #E$CEF              does it already exist?
+                    bne       MakeDst1            report the error if not
+                    lda       #DIR.+READ.         open it as a directory
+                    leax      dstbuf,u            point to the destination
+                    os9       I$Open              to check that it is one
+                    bcs       MakeDst1            report the error if it isn't
+                    os9       I$Close             close it again
+                    bcc       MakeDst2            use it if that went well
+MakeDst1            bsr       SetDstName          report against the destination
+                    orcc      #Carry              return the error
+                    puls      a,pc
+MakeDst2            clrb                          no error
+                    puls      a,pc
+
+* Point <lstfopen and <lstfopln at srcbuf or dstbuf for a report.
+SetSrcName          pshs      b                   save the error
+                    leax      srcbuf,u            point to the source
+                    ldd       <srcend             get its end
+                    bra       SetName             set the name
+SetDstName          pshs      b                   save the error
+                    leax      dstbuf,u            point to the destination
+                    ldd       <dstend             get its end
+SetName             stx       <lstfopen           report against it
+                    pshs      x                   save its start
+                    subd      ,s++                get its length
+                    std       <lstfopln           save it
+                    puls      b,pc                restore the error
+
+* B=error, reported against <lstfopen. With -a, exit with it.
+TreeFail            stb       <lasterr            remember it for the exit status
+                    lbsr      ShowFail            report it
+                    tst       <abortflg           abort on error?
+                    beq       TreeFail2           branch if not
+                    ldb       <lasterr            get the error
+                    lbra      Exit                and exit with it
+TreeFail2           rts
+
+* Copy the file srcbuf to dstbuf, reporting any failure.
+CopyBufs            leax      srcbuf,u            point to the source
+                    stx       <srcfname           copy from it
+                    stx       <wfileptr           and name it in the progress message
+                    ldd       <srcend             get its end
+                    pshs      x                   save its start
+                    subd      ,s++                get its length
+                    std       <wfilelen           save it for the message
+                    leax      dstbuf,u            point to the destination
+                    stx       <dstfptr            copy to it
+                    lbsr      CopyFile            copy the file
+                    bcs       TreeFail            report it if that failed
+                    rts
+
+* A=open source directory; srcbuf and dstbuf name it and its copy. The
+* directory is closed while a subdirectory is copied, so the depth of a
+* tree doesn't depend on the number of free paths; on reopening, the
+* entries already copied are skipped.
+* Frame: 0,s=path 1,s=entries to skip 3,s=entries done 5,s=end of
+* srcbuf 7,s=end of dstbuf
+TreeLevel           pshs      a                   save the path
+                    tfr       s,d                 get the stack pointer
+                    subd      #FRAMESZ+TREEMRG    allow for this level
+                    cmpd      <stklim             is there room?
+                    puls      a                   restore the path
+                    bhs       TreeLevel2          branch if so
+                    os9       I$Close             close the directory
+                    bsr       SetSrcName          report against the source
+                    ldb       #E$StkOvf           the tree is too deep
+                    bra       TreeFail            report it
+TreeLevel2          ldx       <dstend             get the end of the destination
+                    pshs      x                   save it
+                    ldx       <srcend             get the end of the source
+                    pshs      x                   save it
+                    ldx       #0                  get a zero count
+                    pshs      x                   no entries done
+                    pshs      x                   no entries to skip
+                    pshs      a                   save the path
+TLNext              lda       ,s                  get the directory path
+                    leax      record,u            point to the entry buffer
+                    ldy       #RD.Size            ask for the name and the attributes
+                    lbsr      ReadDirCompat       read the next entry
+                    bcs       TLEnd               branch at the end or on an error
+                    ldd       1,s                 are there entries to skip?
+                    beq       TLUse               branch if not
+                    subd      #1                  count the skipped entry
+                    std       1,s                 save the count
+                    bra       TLNext              and read the next entry
+TLUse               ldd       3,s                 get the count of entries done
+                    addd      #1                  count this one
+                    std       3,s                 save the count
+                    lbsr      AddNames            add its name to both paths
+                    bcs       TLLong              branch if a path is too long
+                    lda       record+RD.Attr,u    get the entry's attributes
+                    bita      #DIR.               is it a directory?
+                    bne       TLSub               branch if so
+                    bsr       CopyBufs            copy the file
+TLRestore           bsr       TLTrunc             remove the name from both paths
+                    bra       TLNext              and read the next entry
+TLLong              lbsr      SetSrcName          report against the directory
+                    lbsr      TreeFail            report the error
+                    bra       TLRestore           and carry on
+TLSub               sta       <tattr              use its attributes for the copy
+                    lda       ,s                  get the directory path
+                    os9       I$Close             close it while the subdirectory is copied
+                    lbsr      MakeDst             make the destination directory
+                    bcs       TLSubFail           branch if that failed
+                    lbsr      OpenSrcDir          open the subdirectory
+                    bcs       TLSubOpen           branch if that failed
+                    bsr       TreeLevel           copy what is in it
+                    bra       TLReopen            and reopen this directory
+TLSubOpen           lbsr      SetSrcName          report against the subdirectory
+TLSubFail           lbsr      TreeFail            report the error
+TLReopen            ldd       3,s                 get the count of entries done
+                    std       1,s                 skip them after reopening
+                    bsr       TLTrunc             remove the name from both paths
+                    lbsr      OpenSrcDir          reopen this directory
+                    bcs       TLOpenErr           branch if that failed
+                    sta       ,s                  save the new path
+                    bra       TLNext              and read the next entry
+TLOpenErr           lbsr      SetSrcName          report against this directory
+                    lbsr      TreeFail            report the error
+                    bra       TLRet               and give up on it
+TLEnd               cmpb      #E$EOF              end of the directory?
+                    beq       TLClose             branch if so
+                    lbsr      SetSrcName          report against this directory
+                    lbsr      TreeFail            report the error
+TLClose             lda       ,s                  get the directory path
+                    os9       I$Close             close it
+TLRet               leas      FRAMESZ,s           discard the frame
+                    rts
+
+* Remove the last name from both paths. The frame is 2 bytes deeper.
+TLTrunc             lda       #C$CR               get a carriage return
+                    ldx       7,s                 get the end of this directory's source
+                    sta       ,x                  end the source there
+                    stx       <srcend             save the end
+                    ldx       9,s                 get the end of this directory's destination
+                    sta       ,x                  end the destination there
+                    stx       <dstend             save the end
+                    rts
+
+* Add a separator and the entry's name to srcbuf and dstbuf.
+AddNames            ldd       <srcend             get the end of the source
+                    leax      srcbuf+PATHMAX-RD.ID-2,u get the last place any name fits
+                    pshs      x                   save it
+                    cmpd      ,s++                does the name fit?
+                    bhi       AddNamesBad         branch if not
+                    ldd       <dstend             get the end of the destination
+                    leax      dstbuf+PATHMAX-RD.ID-2,u get the last place any name fits
+                    pshs      x                   save it
+                    cmpd      ,s++                does the name fit?
+                    bhi       AddNamesBad         branch if not
+                    ldx       <srcend             add the name to the source
+                    bsr       AddName
+                    stx       <srcend             save the new end
+                    ldx       <dstend             add the name to the destination
+                    bsr       AddName
+                    stx       <dstend             save the new end
+                    clrb                          no error
+                    rts
+AddNamesBad         ldb       #E$BPNam            the pathlist is too long
+                    orcc      #Carry              return the error
+                    rts
+AddName             leay      record+RD.Name,u    point to the entry's name
+                    lda       #PDELIM             get a separator
+AddName2            sta       ,x+                 add the character to the path
+                    lda       ,y+                 get a character of the name
+                    bpl       AddName2            branch if it isn't the last
+                    anda      #$7F                clear the end of name marker
+                    sta       ,x+                 add the last character
+                    lda       #C$CR               get a carriage return
+                    sta       ,x                  end the path with it
+                    rts
+
 DoVerify
                     pshs      u,y                 save registers
                     ldx       <writemsb           get 2 msb's of last write
@@ -779,6 +1172,8 @@ snderr1             leax      errmsg1,pcr         address of 'write verify faile
 errmsg1             fcb       C$BELL
                     fcc       /Error - write verification failed./
                     fcb       C$CR
+
+                    use       ../level1/cmds/readdir-compat.asm
 
                     emod
 eom                 equ       *
