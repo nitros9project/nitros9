@@ -2,4 +2,5 @@
 Syntax: Del [<opts>] <path> [<path>] [<opts>]
 Usage : Deletes one or more files
 Opts  :
+  -r = also delete directories and everything in them
   -x = delete relative to execution directory
