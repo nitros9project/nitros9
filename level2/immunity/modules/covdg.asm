@@ -76,6 +76,26 @@ edition             set       2
 
 skip2               equ       $8C       cmpx instruction
 
+* SSFM=1 adds a V9958 (SuperSprite-FM+) text screen next to the VDG ones,
+* SSFM=2 makes every console a V9958 screen. See ssfm.asm.
+                    IFNDEF    SSFM
+SSFM                equ       0
+                  ENDC
+
+* V9Test <label>: branch to the V9958 code when this device is a V9958
+* screen (SSFM=1: bit 6 of the parity byte; SSFM=2: always)
+                  IFNE    SSFM
+V9Test              macro
+                  IFEQ    SSFM-2
+                    lbra      \1
+                  ELSE
+                    ldb       <V.TYPE,u
+                    bitb      #$40
+                    lbne      \1
+                  ENDC
+                    endm
+                  ENDC
+
                     mod       eom,name,tylg,atrv,start,size
 
 * Stack offsets for LINE command
@@ -104,6 +124,9 @@ name                fcs       /CoVDG/
 
 * Init VDG screen (allocate memory, etc)
 Init                pshs      u,y,x     ; save regs
+                  IFNE    SSFM
+                    V9Test    V9Init
+                  ENDC
                     ldx       >WGlobal+G.HRSEnt ; get shared application-screen services
                     beq       InitNoHiRes ; continue when the optional module is absent
                     jsr       H$Init,x  ; initialize this device's screen descriptors
@@ -222,6 +245,9 @@ L012A               fcb       $00,$0A,$03,$0E,$06,$09,$04,$10 0-7
 
 * Terminate device
 Term                pshs      u,y,x
+                  IFNE    SSFM
+                    V9Test    V9Term
+                  ENDC
                     ldx       >WGlobal+G.HRSEnt ; get shared application-screen services
                     beq       TermNoHiRes ; skip application-screen cleanup when absent
                     jsr       H$Term,x  ; release this device's application screens
@@ -289,12 +315,20 @@ MJScrAdr            tfr       b,a
 *  handle buffered writes (will require changing SCF as well, I think) like CoWin/Grf
 *  & grfdrv do). Ultimately by device driver & descriptor
 start               lbra      Init      ; initialize VDG window
+                  IFNE    SSFM
+                    lbra      Write     ; write character (also sets up multi-byte parm count/vector)
+                  ELSE
                     bra       Write     ; write character (also sets up multi-byte parm count/vector)
                     nop       Can       ; use for a constant
+                  ENDC
                     lbra      GetStat   ; co-module GetStat calls
                     lbra      SetStat   ; co-moudle SetStat calls
+                  IFNE    SSFM
+                    lbra      Term
+                  ELSE
                     bra       Term
                     nop       Can       ; use for a constant
+                  ENDC
 * fall through - CoWinSpc Special processing entry point (special to Level II) - last entry table
 * Called from VTIO
 * Entry:  A = function code
@@ -303,6 +337,9 @@ start               lbra      Init      ; initialize VDG window
 *          >1 = only used by CoGrf/CoWin
 *         U = device memory pointer
 *         X = path descriptor pointer
+                  IFNE    SSFM
+                    V9Test    V9Spec
+                  ENDC
                     tsta                ; select new window to be active?
                     bne       L0035     ; no, try next function code
 * Select new window to be active
@@ -344,6 +381,9 @@ NoOp                clrb
 * Entry: A = char to write
 *        Y = path desc ptr
 Write               equ       *
+                  IFNE    SSFM
+                    V9Test    V9Write
+                  ENDC
                     cmpa      #$0F      ; special control char (including Coco 1/2 graphics commands)
                     bls       Dispatch  ; yes, dispatch from table
                     cmpa      #$1B      ; escape code?
@@ -737,6 +777,11 @@ DispAlfa            pshs      x,y,a     ; preserve regs (A=video bits to merge i
 L03AD               sta       <VD.TFlg1,u ; save updated VDG info
                     tst       >WGlobal+G.CrDvFl ; are we active device?
                     lbeq      L0440     ; no, skip ahead
+                  IFNE    SSFM
+                    pshs      a         ; the VDG is being displayed: route the monitor to it
+                    lbsr      VdpHide
+                    puls      a
+                  ENDC
                     sta       >PIA1Base+2 ; yes, set lowercase in hardware
                     ldy       #$FFC6    ; ok, now set up via old CoCo 2 mode the graphics video mode.
                     tstb                ; text screen?
@@ -1578,7 +1623,11 @@ L092B               ldd       <VD.FFSPt,u ; get current FFill stack ptr
 
 * Entry: Y=Ptr to path descriptor
 *        A=GetStat code
-GetStat             ldx       PD.RGS,y  ; get ptr to users stack
+GetStat             equ       *
+                  IFNE    SSFM
+                    V9Test    V9GetStat
+                  ENDC
+                    ldx       PD.RGS,y  ; get ptr to users stack
                     cmpa      #SS.AlfaS ; alfa Display Status?
                     beq       Rt.AlfaS
                     cmpa      #SS.ScSiz ; screen size?
@@ -1781,7 +1830,11 @@ L0A60               lsra
                     lda       a,x       ; get pixel mask for pixel within byte we want
                     puls      pc,y,x    ; x = offset address, Y = base
 
-SetStat             ldx       PD.RGS,y  ; get caller's register stack ptr
+SetStat             equ       *
+                  IFNE    SSFM
+                    V9Test    V9SetStat
+                  ENDC
+                    ldx       PD.RGS,y  ; get caller's register stack ptr
                     cmpa      #SS.ComSt ; caller changing true lowercase on/off on VDG window?
                     beq       Rt.ComSt
                     cmpa      #SS.AAGBf
@@ -2010,6 +2063,10 @@ L0743               puls      d
                     comb
                     ldb       #E$BPAddr ; bad page address
                     rts
+
+                  IFNE    SSFM
+                    use       ssfm.asm
+                  ENDC
 
                     emod
 eom                 equ       *
