@@ -24,7 +24,8 @@ nothing can be seen there.
 CoVDG stays the module that VTIO links; with `SSFM` > 0 it gets a second
 "personality" for the V9958 screens (VTIO links a module named `CoVDG` for
 every device whose parity byte has bit 7 clear, so a separate co-module was not
-possible without changing VTIO). It must be built with `HIRES=0`.
+possible without changing VTIO). It also works with the hi-res consoles (`HIRES=42` or `HIRES=51`): CoHR and
+Co42 get the same V9958 personality.
 
 ## Files
 
@@ -37,6 +38,7 @@ In `level2/immunity/modules`:
 | `vdpfont.asm` | A 96-glyph 6x8 font (screen code = ASCII - 32). |
 | `v9win.asm` | Descriptor of `/V9` (`SSFM=1`). |
 | `covdg.asm` | The existing file, patched: small `IFNE SSFM` hooks at Init, Term, Write, GetStat, SetStat, the select entry and DispAlfa. |
+| `cohr.asm` | The CoHR/Co42 hi-res console, patched the same way for `HIRES=42` and `HIRES=51` builds (`SetVid` takes the place of DispAlfa for the monitor routing; `ESC $21` is a stub). |
 | `term_vdg.asm`, `vdgwin.asm` | Patched so the descriptors of `/Term`, `/V1` ... get 40x24 or 80x24 when `SSFM=2`. |
 
 In `recipes/immunity`: `immunity.mak` (patched, the build options below) and
@@ -188,7 +190,7 @@ For example `display 1b 3e 0d 88 >/V1` makes the flagged characters blink, and
 * Overlays use their parent's colours; they cannot have colours of their own.
 * Up to 8 screens (`/Term`, `/V1` ... `/V7`), limited by the 8 KB per screen
   assumed for the save area in the upper 64K of a 128 KB VRAM.
-* Not for `HIRES` builds.
+* On a `HIRES` build, `ESC $21` (select window) is ignored on a V9958 screen.
 
 ## Notes for maintainers
 

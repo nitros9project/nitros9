@@ -83,7 +83,7 @@ endif
 # slot 1 = 0, slot 2 = 17, slot 3 = 34, slot 4 = 51.
 # SSFM_DEBUG=1 routes the monitor to the V9958 as soon as /V9 is
 # initialised (INIZ /V9), to test the ports without relying on CLEAR.
-# Needs HIRES=0.
+# Works with the hi-res consoles too (HIRES=42 or 51).
 SSFM ?= 0
 SSFM_COLS ?= 80
 SSFM_MPI ?= 1
@@ -91,9 +91,6 @@ SSFM_SLOTSW ?= 0
 SSFM_SLOT ?= 0
 SSFM_DEBUG ?= 0
 ifneq ($(SSFM),0)
-ifneq ($(HIRES),0)
-$(error SSFM=$(SSFM) needs HIRES=0)
-endif
 AFLAGS_SSFM = -DSSFM=$(SSFM) -DV9COLS=$(SSFM_COLS) -DMPI=$(SSFM_MPI) -DSLOTSW=$(SSFM_SLOTSW) -DV9SLOT=$(SSFM_SLOT) -DSSFMDBG=$(SSFM_DEBUG)
 ifeq ($(SSFM),2)
 SSFMDEV =
@@ -282,9 +279,10 @@ $(MODDIR)/vtio.dr: $(LEVEL2)/coco3/modules/vtio.asm | $(MODDIR)
 HIRES_FLAGS = -DUSEBUFF=$(HIRES_BUFF) -DUSEINV=$(HIRES_INVERSE) \
 	-DUSECODV=$(HIRES_CODV)
 $(MODDIR)/cohr.io: $(L2PMD)/cohr.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(HIRES_FLAGS)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(HIRES_FLAGS) $(AFLAGS_SSFM)
 $(MODDIR)/co42.io: $(L2PMD)/cohr.asm $(L2PMD)/co42font.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(HIRES_FLAGS) -DUSECO42=1
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ $(HIRES_FLAGS) -DUSECO42=1 $(AFLAGS_SSFM)
+$(MODDIR)/cohr.io $(MODDIR)/co42.io: ssfm.asm vdp9958.asm vdpfont.asm
 
 # ---------------------------------------------------------------------------
 # Module variants
