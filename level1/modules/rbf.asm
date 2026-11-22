@@ -34,6 +34,9 @@
 *  26      2005/11/26  Boisy G. Pitre
 * Added SS.FDInf which is now used by dir -e
 *
+*  27      2026/11/22  Mark Murray
+* Paths open on one file now share its size and its buffered sectors
+*
 * Level 1 disassembled 98/08/23 18:26:52 by Disasm v1.6 (C) 1988 by RML
 *
 * ------------------------------------------------------------------
@@ -51,7 +54,7 @@ ty                  set       FlMgr
 lg                  set       Objct
 tylg                set       ty+lg
 atrv                set       ReEnt+rev
-edition             set       26
+edition             set       27
 
 size                equ       0                   ; not used in a file manager.
 
@@ -361,6 +364,12 @@ Open1CE
 * ldq   FD.SIZ,u
                     ldd       FD.SIZ,u            get file size
                     ldx       FD.SIZ+2,u
+                    pshs      u                   save the FD sector buffer pointer
+                    lbsr      FirstMate           is another path open on this file?
+                    beq       Open208             no, use the size in the FD
+                    ldd       PD.SIZ,u            yes, use its size, which may be newer
+                    ldx       PD.SIZ+2,u
+Open208             puls      u                   restore the FD sector buffer pointer
 * stq PD.SIZ,y
 Open209             std       PD.SIZ,y            set file size in path descriptor of caller
                     stx       PD.SIZ+2,y
@@ -837,6 +846,12 @@ Read4D9             lda       PD.SMF,y            get stat flags
                     cmpx      $06,s               check the stack
                     bne       Read4F4             skipahead
                     lbsr      L1098               find a segment
+                    bcs       Read4F7             error, return it
+                    lbsr      FlushSectorBuffer ; flush the sector buffer
+                    bcs       Read4F7             error, return it
+* The whole sector is written, so it needn't be read, but it must still
+* be taken from another path that holds it, or that path keeps old data.
+                    lbsr      Borrow              take the sector if another path holds it
                     bra       Read4F7
 
 Read4F4             lbsr      L1256
@@ -1560,6 +1575,13 @@ L0A11               ldb       #E$Share            get shareable file error
 
 L0A15               puls      pc,x,b,a
 
+* The open paths of a drive are kept in a list that starts at V.FileHd
+* in its drive table and runs through PD.Exten, so that the paths open
+* on one file can share its size and its sectors.
+
+* Start the path at the beginning of the file in PD.FD and put it into
+* the list of open paths on its drive.
+* Entry: Y = path descriptor pointer
 L0A2A
                     clra
                     clrb
@@ -1567,7 +1589,72 @@ L0A2A
                     std       PD.CP+2,y           smaller than STQ
                     sta       PD.SSZ,y            init segment size
                     std       PD.SSZ+1,y
-L0A90               rts
+                    bsr       L0A90               make sure the path is not in the list already
+                    pshs      x                   save X
+                    ldx       PD.DTB,y            get the drive table pointer
+                    ldd       V.FileHd,x          get the first path in the list
+                    std       PD.Exten,y          put it after this path
+                    sty       V.FileHd,x          and make this path the first
+                    puls      pc,x                restore X and return
+
+* Take the path out of the list of open paths on its drive, if it is in it.
+* Entry: Y = path descriptor pointer
+* Exit:  all registers preserved
+L0A90               pshs      u,x,b,a,cc          save the registers
+                    ldu       PD.DTB,y            get the drive table pointer
+                    beq       Unlink3             none yet, so the path is in no list
+                    leau      V.FileHd,u          point to the start of the list
+Unlink1             ldx       ,u                  get the next path in the list
+                    beq       Unlink3             end of the list, the path is not in it
+                    pshs      y                   is it this path?
+                    cmpx      ,s++
+                    beq       Unlink2             yes, go take it out
+                    leau      PD.Exten,x          no, move on to its link
+                    bra       Unlink1             and keep looking
+Unlink2             ldd       PD.Exten,y          get the path after this one
+                    std       ,u                  and link it in place of this path
+Unlink3             puls      pc,u,x,b,a,cc       restore the registers and return
+
+* Find the paths other than this one that are open on the same file.
+* FirstMate returns the first; NextMate, given U, returns the one after U.
+* Entry: Y = path descriptor pointer, U = the last path found (NextMate)
+* Exit:  U = the path found, Z set if there is no other; D and X preserved
+FirstMate           pshs      b,a                 save D
+                    ldu       PD.DTB,y            get the drive table pointer
+                    ldu       V.FileHd,u          get the first path in the list
+                    bra       Mate2               go check it
+NextMate            pshs      b,a                 save D
+Mate1               ldu       PD.Exten,u          get the next path in the list
+Mate2               beq       Mate3               end of the list, there is no other
+                    pshs      y                   is it this path?
+                    cmpu      ,s++
+                    beq       Mate1               yes, skip it
+                    ldd       PD.FD,u             is it open on the same file?
+                    cmpd      PD.FD,y
+                    bne       Mate1               no, skip it
+                    ldb       PD.FD+2,u
+                    cmpb      PD.FD+2,y
+                    bne       Mate1               no, skip it
+                    andcc     #^Zero              clear Z, there is another
+Mate3               puls      pc,b,a              restore D and return
+
+* Give the other paths open on this file the size of the file in this one.
+* Entry: Y = path descriptor pointer
+* Exit:  Z clear if there were any, carry clear; all registers preserved
+SizeOut             pshs      u,x,b,a             save the registers
+                    clr       ,-s                 no other paths yet
+                    bsr       FirstMate           find the first other path
+                    beq       SizeOut2            none, return
+SizeOut1            ldd       PD.SIZ,y            give it this path's size
+                    std       PD.SIZ,u
+                    ldd       PD.SIZ+2,y
+                    std       PD.SIZ+2,u
+                    inc       ,s                  count it
+                    bsr       NextMate            find the next other path
+                    bne       SizeOut1            and do the same for it
+SizeOut2            andcc     #^Carry             no error
+                    tst       ,s+                 were there any other paths?
+                    puls      pc,u,x,b,a          restore the registers and return
 
 * "wake up the process"
 L0C56               pshs      y,x,b,a
@@ -1631,6 +1718,8 @@ L0CC5               coma
                     puls      pc,u,x
 
 L0CC8               lbsr      L1098
+                    bcs       L0CC5               error, return it
+                    lbsr      SizeOut             give the other paths on the file the new size
                     puls      pc,u,x
 
 L0CD1               ldd       PD.SIZ+1,y
@@ -1959,6 +2048,9 @@ L0EFE               clra                          clear the carry
                     lda       PD.MOD,y            access mode
                     bita      #DIR.               directory?
                     bne       L0F6F               yes (bit set), exit immediately
+* Another path open on the file may still use the sectors past the new end.
+                    lbsr      SizeOut             give the other paths on the file the new size
+                    bne       L0F6F               and keep the sectors if there are any
 
                     ifne      UNTESTED_H6309
                     ldq       PD.SIZ,y            grab size of the file
@@ -2460,6 +2552,9 @@ L1256               pshs      u,x
                     bcs       L12C6
                     bsr       FlushSectorBuffer ; call helper FlushSectorBuffer
                     bcs       L12C6
+                    bsr       Borrow              does another path on the file hold the sector?
+                    bcs       L12C6               error, return it
+                    bne       L12C6               yes, it is in our buffer now
                     bsr       L1220
                     lbsr      ReadCurrentSector ; call helper ReadCurrentSector
                     bcs       L12C6
@@ -2467,6 +2562,47 @@ L1256               pshs      u,x
                     ora       #(BufBusy!SINBUF)
                     sta       PD.SMF,y
 L12C6               puls      pc,u,x
+
+* Take the sector at the current position from another path open on the
+* file, if one holds it, so that a sector is only ever in one buffer.
+* A path still reading or writing the sector in the driver is waited for.
+* Entry: Y = path descriptor pointer, whose own buffer has been flushed
+* Exit:  Z clear if the sector is now in our buffer, carry set on error
+Borrow              pshs      u,x                 save the registers
+Borrow1             lbsr      FirstMate           find the first other path on the file
+                    beq       Borrow5             none, the sector must be read
+Borrow2             ldd       PD.CP,u             is it at the same sector?
+                    cmpd      PD.CP,y
+                    bne       Borrow3             no, try the next
+                    lda       PD.CP+2,u
+                    cmpa      PD.CP+2,y
+                    bne       Borrow3             no, try the next
+                    lda       PD.SMF,u            get its state
+                    bita      #InDriver           is the driver still moving the sector?
+                    bne       Borrow4             yes, wait for it
+                    bita      #SINBUF             does its buffer hold the sector?
+                    bne       Borrow6             yes, take it
+Borrow3             lbsr      NextMate            find the next other path on the file
+                    bne       Borrow2             and check it
+                    bra       Borrow5             none holds the sector
+Borrow4             lda       PD.CPR,u            get the process using that path
+                    lbsr      L0C56               wake the process waiting for us
+                    os9       F$IOQu              wait until that process is done
+                    lbsr      L1053               were we sent a signal meanwhile?
+                    bcc       Borrow1             no, look again
+                    puls      pc,u,x              yes, return the error
+Borrow5             clra                          the sector is not here, no error
+                    puls      pc,u,x              restore the registers and return
+Borrow6             ldd       PD.BUF,u            swap the two buffers
+                    ldx       PD.BUF,y
+                    std       PD.BUF,y
+                    stx       PD.BUF,u
+                    lda       PD.SMF,u            take its state, the modified flag too
+                    ora       #BufBusy            and mark the buffer in use
+                    sta       PD.SMF,y
+                    clr       PD.SMF,u            it no longer holds a sector
+                    lda       #1                  clear Z, the sector is ours, no error
+                    puls      pc,u,x              restore the registers and return
 
 * SS.Rename: parent directory path, X=old[30]+new[30], Y=60.
 * Work on directory entries through RBF; never open or modify the child FD.
