@@ -109,6 +109,10 @@
 * expected PD.Exten to be allocated when it wasn't, and that caused
 * a write to PE.Prior to go into the system globals area (address $0016).
 *
+*  38      2026/11/22  Mark Murray
+* A write of a whole sector takes the sector from another path that holds
+* it, instead of leaving that path with old data that it may write back.
+*
 * ------------------------------------------------------------------
 
                     nam       RBF
@@ -119,7 +123,7 @@
                     use       readdir.d ; include shared definitions or implementation
                     endc
 
-rev                 set       $03
+rev                 set       $00
 ty                  set       FlMgr
                     ifne      H6309
 lg                  set       Obj6309
@@ -128,7 +132,7 @@ lg                  set       Objct
                     endc
 tylg                set       ty+lg
 atrv                set       ReEnt+rev
-edition             set       37
+edition             set       38
 
                     org       $00
 size                equ       .
@@ -1105,7 +1109,7 @@ Read4D9             lda       PD.SMF,y            get stat flags
                     leax      >Writ571,pcr        WritLn or ReadLn?
                     cmpx      $06,s               check the stack
                     bne       Read4F4             skipahead
-                    lbsr      L1098               find a segment
+                    lbsr      L1255               take the sector if another path holds it
                     bra       Read4F7
 
 Read4F4             lbsr      L1256
@@ -3349,7 +3353,16 @@ FlushSectorBuffer   clrb                ; clear carry
                     bsr       L1205               flush the sector to drive
 L1254               puls      pc,u,x              restore & return
 
+* Get the sector at the current position into the buffer: take it from
+* another path open on the file if one holds it, else read it.  L1255 is
+* for a write of the whole sector, which needs no read but must still take
+* the sector, or the other path keeps old data and may write it back.
 L1256               pshs      u,x
+                    lda       #1                  read the sector if no other path holds it
+                    bra       L1257
+L1255               pshs      u,x
+                    clra                          the caller writes all of it, so don't read it
+L1257               pshs      a                   save the choice
                     lbsr      L1098
                     bcs       L12C6
                     bsr       FlushSectorBuffer ; call helper FlushSectorBuffer
@@ -3380,7 +3393,7 @@ L128E               lda       PD.CPR,x
                     os9       F$IOQu
                     lbsr      L1053
                     bcc       L1261
-                    puls      u,x,pc
+                    bra       L12C6               return the error
 
 L12A0               ldy       PE.PDptr,y
                     ldd       PD.BUF,x
@@ -3391,9 +3404,11 @@ L12A0               ldy       PE.PDptr,y
                     ora       #BufBusy            >takes state from x and
                     sta       PD.SMF,y            / stores to y, is infamous "lha" bug
                     clr       PD.SMF,x
-                    puls      pc,u,x
+                    bra       L12C6               return, no error
 
 L12B5               ldy       PE.PDptr,y
+                    tst       ,s                  should the sector be read?
+                    beq       L12C5               no, the caller writes all of it
                     lbsr      L1220
                     lbsr      ReadCurrentSector ; call helper ReadCurrentSector
                     bcs       L12C6
@@ -3406,7 +3421,9 @@ L12B5               ldy       PE.PDptr,y
                     sta       PD.SMF,y
                     puls      a
                     endc
-L12C6               puls      pc,u,x
+L12C5               clrb                          no error
+L12C6               leas      1,s                 drop the choice
+                    puls      pc,u,x
 
 * SS.Rename: parent directory path, X=old[30]+new[30], Y=60.
 * Work on directory entries through RBF; never open or modify the child FD.
