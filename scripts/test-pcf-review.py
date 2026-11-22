@@ -119,6 +119,49 @@ def main():
                 assert fat(v) == old_fat, ('link rollback', failure)
                 ok(p, 'Close')
 
+            # Failed mkdir publication must restore both deleted and end-marker
+            # slots before freeing the child, including second-half failures.
+            for marker in (0, 0xe5):
+                for half in (1, 2):
+                    p, v = fresh()
+                    v.sectors[v.data][128] = marker
+                    original_root = bytes(v.sectors[v.data])
+                    old_fat = fat(v)
+                    # Zero child (2), FAT mirrors (4), dot entries (2), parent.
+                    p.fail_write = len(p.writes)+8+half
+                    result = p.call('MkDir', path='/pc0/RETRYDIR')
+                    assert result[:2] == (1, p.s['E$Write']), (marker, half, result)
+                    p.fail_write = None
+                    assert bytes(v.sectors[v.data]) == original_root, ('mkdir slot', marker, half)
+                    assert fat(v) == old_fat, ('mkdir allocation', marker, half)
+                    assert p.call('Open', mode=0x81, path='/pc0/RETRYDIR')[:2] == (1, p.s['E$PNNF'])
+                    ok(p, 'MkDir', path='/pc0/RETRYDIR')
+                    ok(p, 'Delete', path='/pc0/RETRYDIR')
+
+            # A second media error during rollback must retain the allocation:
+            # the parent might still expose the child. Preserve the first error.
+            class FailedWrites:
+                def __init__(self, *indices):
+                    self.indices = indices
+
+                def __eq__(self, index):
+                    return index in self.indices
+
+            for half in (1, 2):
+                for rollback_half in (1, 2):
+                    p, v = fresh()
+                    old_fat = fat(v)
+                    publication = len(p.writes)+8+half
+                    p.fail_write = FailedWrites(publication, publication+rollback_half)
+                    result = p.call('MkDir', path='/pc0/RETAIN')
+                    assert result[:2] == (1, p.s['E$Write']), (half, rollback_half, result)
+                    assert fat(v) != old_fat, ('unsafe mkdir reclaim', half, rollback_half)
+                    # Cluster four is the first free cluster in this fixture.
+                    for copy in (0, 1):
+                        data = v.sectors[v.base+32+copy*v.fatsize]
+                        child = int.from_bytes(data[16:20], 'little') & 0x0fffffff
+                        assert child >= 0x0ffffff8, ('lost mkdir child', half, rollback_half, copy)
+
             # Optional FSInfo I/O cannot invalidate an authoritative allocation.
             for failed_read in (False, True):
                 p, v = fresh()
@@ -179,7 +222,7 @@ def main():
                     found = True
             assert found, 'OEM name was truncated or skipped'
             ok(p, 'Close')
-            print(f'PASS Level {level}: DeletX, WRITE chdir, readonly SS.Opt, truncate/allocation/link rollback, orphan LFN', flush=True)
+            print(f'PASS Level {level}: DeletX, WRITE chdir, readonly SS.Opt, truncate/allocation/link/mkdir rollback, orphan LFN', flush=True)
 
 
 if __name__ == '__main__':

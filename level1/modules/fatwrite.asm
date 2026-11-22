@@ -582,7 +582,12 @@ createslot@         lda       ,x        ; load A from ,x
                     bra       createscan@ ; continue unconditionally createscan@
 createfree@         sta       F.Zero,u             zero means preserve end marker
                     lbsr      EntryLocation ; call helper EntryLocation
-                    pshs      x         ; preserve x on stack
+                    pshs      x,y       ; preserve slot and path descriptor
+                    leay      F.Record,u ; save the unused slot before publication
+                    ldb       #32       ; preserve all original directory bytes
+                    lbsr      CopyBytes ; allocation does not use Record scratch
+                    puls      x,y       ; restore slot and path descriptor
+                    pshs      x         ; preserve slot through entry construction
                     leax      F.Entry,u ; point X at F.Entry,u
                     ldb       #32       ; load B from #32
 createzero@         clr       ,x+       ; clear ,x+
@@ -614,7 +619,7 @@ createattr@         sta       F.Entry+11,u ; save A in F.Entry+11,u
                     bcs       createret@ ; branch on carry or error createret@
 createpublish@      lbsr      CopyEntryToDisk ; call helper CopyEntryToDisk
                     lbsr      WriteData ; call helper WriteData
-                    bcs       createret@ ; branch on carry or error createret@
+                    lbcs      CreateUndo ; restore the slot before reclaiming the child
                     tst       F.Zero,u  ; test F.Zero,u
                     bne       createdone@ ; branch when unequal or nonzero createdone@
                     lbsr      ScanNext  ; call helper ScanNext
@@ -642,6 +647,31 @@ createdone@         clr       F.Creating,u ; clear F.Creating,u
 createret@          rts                 ; return to caller
 createbad@          coma                ; complement A and set carry
                     rts                 ; return to caller
+
+* Restore the complete unused slot after a partial publication. Reclaim a
+* directory's child only after the parent no longer exposes its cluster.
+CreateUndo          pshs      b,cc      ; retain the original publication error
+                    lda       #F.DirLBA-128 ; select the containing directory sector
+                    lbsr      LoadField ; restore the publication address
+                    lbsr      ReadData  ; reload both halves after a failed write
+                    bcs       createundoret@ ; retain child if rollback cannot read
+                    ldd       F.DirOff,u ; original unused slot offset
+                    leay      d,x       ; destination in the reloaded sector
+                    leax      F.Record,u ; exact original slot, including free marker
+                    ldb       #32       ; restore every byte of the slot
+                    lbsr      CopyBytes ; undo a possibly partial publication
+                    ldy       F.Owner,u ; restore the path descriptor for driver calls
+                    lbsr      WriteData ; make the child unreachable on disk
+                    bcs       createundoret@ ; never free a possibly reachable child
+                    lda       F.Creating,u ; distinguish files from directories
+                    cmpa      #2        ; only mkdir allocated a child cluster
+                    bne       createundoflush@ ; files have no allocation to reclaim
+                    ldd       #F.Child*256+F.Saved ; select the unpublished directory
+                    lbsr      CopyVal   ; prepare best-effort chain reclamation
+                    lbsr      FreeChain ; release the child in all FAT copies
+createundoflush@    lbsr      Flush     ; finish rollback before returning
+createundoret@      ldy       F.Owner,u ; restore caller path after scratch copies
+                    puls      b,cc,pc   ; report the original publication failure
 
 * Locate a write position, allocating/linking a zeroed cluster as necessary.
 EnsureCluster       ldd       F.Start,u ; load D from F.Start,u
