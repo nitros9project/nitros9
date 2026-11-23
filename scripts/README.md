@@ -18,7 +18,9 @@ source tree.
 The debugging helpers are documented in [debug/README.md](debug/README.md).
 
 The allocator regression test needs LWASM, a C++20 compiler and a local
-[usim](https://github.com/raybellis/usim) checkout:
+[raybellis/usim](https://github.com/raybellis/usim) checkout. Tested with commit
+[`2b454536ca8c4156c989b5ebcac718a8cc8c5fb7`](https://github.com/raybellis/usim/commit/2b454536ca8c4156c989b5ebcac718a8cc8c5fb7),
+which provides `mc6809.h` and overridable `read`/`write` methods:
 
 ```sh
 python3 scripts/test-level1-srqmem.py --usim-dir /path/to/usim --assembler lwasm
@@ -27,7 +29,9 @@ python3 scripts/test-level1-srqmem.py --usim-dir /path/to/usim --assembler lwasm
 It builds only temporary test ROMs and a minimal RAM test board; it does not boot
 the complete OS or use a replacement kernel. Use `--baseline HEAD` to exercise
 the committed sources rather than working-tree edits. The pre-fix allocator
-fails the zero-size and rounding-overflow cases by writing past its bitmap.
+fails the zero-size and rounding-overflow cases by writing past its bitmap. Zero-byte
+allocations must return `E$BPAddr`; sizes above `$FF00` and unavailable memory
+return `E$MemFul`.
 
 Add `--return-memory` to check `F$SRtMem`: zero-length returns and null
 addresses are no-ops; rounding overflow, unaligned addresses and extents past
