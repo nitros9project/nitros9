@@ -207,8 +207,10 @@ $(LANGUAGES)/basic09/runb_$(CPU):
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
 
-$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
-	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) $(NITROS9DIR)/scripts/check-utilpak-size.py | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@.tmp
+	python3 $(NITROS9DIR)/scripts/check-utilpak-size.py $@.tmp
+	$(MOVE) $@.tmp $@
 
 # CoCo 3 kernel/booter variants
 $(MODDIR)/boot_1773_6ms: boot_1773.asm | $(MODDIR)

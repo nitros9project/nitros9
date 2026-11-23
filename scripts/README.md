@@ -10,6 +10,7 @@ source tree.
 | `dis6809.py` | Disassembles 6809 machine code for reverse-engineering work |
 | `os9dis.py` | Disassembles OS-9 modules and data structures |
 | `fcb2bin.py` | Converts assembly `fcb` byte declarations to binary data |
+| `check-utilpak-size.py` | Rejects resident utility bundles larger than 7,680 bytes (8K minus 512); used by CoCo 3, i-MMU-nity and Wildbits recipes |
 | `test-level1-srqmem.py` | Runs the assembled Level 1 system allocator and bitmap code on an external usim CPU, checking allocation/return rounding, exhaustion and bitmap bounds |
 | `mkvidgfx.py` | Generates the committed data tables (`wgfxdat.asm`, `gemtestdat.asm`) for the Pico-Thing video demos `wgfx` and `gemtest`; `--check` reports stale tables |
 | `debug/list2crc.pl` | Converts an `lwasm` listing into CRC-named listing files |

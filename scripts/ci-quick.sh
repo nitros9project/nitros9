@@ -55,3 +55,12 @@ done
 if [ -f recipes/corsham/makefile ]; then
     make -C recipes/corsham check
 fi
+
+# Resident bundles must leave 512 bytes in their 8K block. Build from each
+# recipe's actual member list so command growth cannot bypass the size check.
+for cpu in 6809 6309; do
+    make -C recipes/coco3/floppy CPU="$cpu" MODDIR="$scratch/utilpak-coco3-$cpu" \
+        "$scratch/utilpak-coco3-$cpu/utilpak1"
+done
+make -C recipes/wildbits/l2 MODDIR="$scratch/utilpak-wildbits" \
+    "$scratch/utilpak-wildbits/utilpak1"

@@ -404,8 +404,10 @@ $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
 
-$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
-	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) $(NITROS9DIR)/scripts/check-utilpak-size.py | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@.tmp
+	python3 $(NITROS9DIR)/scripts/check-utilpak-size.py $@.tmp
+	$(MOVE) $@.tmp $@
 
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)

@@ -421,9 +421,10 @@ $(addprefix $(BASIC09_L2_DIR)/,$(BASIC09_L2)) $(BASIC09_L2_HLP):
 endif
 
 ifeq ($(LEVEL),2)
-$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
-	$(MERGE) $^ > utilpak1
-	$(MOVE) utilpak1 $@
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) $(NITROS9DIR)/scripts/check-utilpak-size.py | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) >$@.tmp
+	python3 $(NITROS9DIR)/scripts/check-utilpak-size.py $@.tmp
+	$(MOVE) $@.tmp $@
 endif
 
 # Descriptor rules
