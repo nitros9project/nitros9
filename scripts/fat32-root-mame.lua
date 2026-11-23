@@ -12,14 +12,16 @@ fatroot_swi_tap = space:install_read_tap(0xfff4, 0xfff4, 'fatroot-console', func
     if busy then return end
     busy = true
     local s = cpu.state['S'].value
-    local pc = space:read_u16(s + 10)
+    local native = cpu.state['MD'] and (cpu.state['MD'].value & 1) ~= 0
+    local extra = native and 2 or 0
+    local pc = space:read_u16(s + 10 + extra)
     local call = space:read_u8(pc)
     if call == 0x0f then
         errors:write(string.format('%d\n',space:read_u8(s+2)));errors:flush()
     end
     local path = space:read_u8(s + 1)
     if (call == 0x8a or call == 0x8c) and (path == 1 or path == 2) then
-        local x, length = space:read_u16(s + 4), space:read_u16(s + 6)
+        local x, length = space:read_u16(s + 4 + extra), space:read_u16(s + 6 + extra)
         if length > 0 and length < 16384 then
             local text = space:read_range(x, x + length - 1, 8)
             if call == 0x8c then text = text:match('^[^\r]*\r') or text end
