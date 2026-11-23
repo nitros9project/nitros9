@@ -35,4 +35,3 @@ runs:
       with:
         path: ${{ runner.temp }}/roms
         key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
-
