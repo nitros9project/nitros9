@@ -61,6 +61,8 @@ sys.exit(int(failure == 'all' or (mirror.startswith('https://archive.') and fail
         result, calls = self.run_setup('none')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([call[1] for call in calls], ['update', 'install'])
+        self.assertNotIn('mame', calls[-1][2])
+        self.assertIn('libsdl2-dev', calls[-1][2])
 
 
 if __name__ == '__main__':

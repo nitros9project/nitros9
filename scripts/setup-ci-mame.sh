@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install smoke-test dependencies without relying on the runner's Azure mirror.
+# Install pinned-MAME build/runtime dependencies without the Azure mirror.
 set -euo pipefail
 scratch=$(mktemp -d)
 trap 'sudo rm -rf "$scratch"' EXIT
@@ -19,17 +19,19 @@ apt_options=(
     -o 'APT::Update::Error-Mode=any'
 )
 for mirror in https://archive.ubuntu.com/ubuntu https://us.archive.ubuntu.com/ubuntu; do
-    echo "Installing MAME using $mirror"
+    echo "Installing MAME dependencies using $mirror"
     cat > "$scratch/sources.list" <<EOF
 deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] $mirror noble main universe
 deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] $mirror noble-updates main universe
 deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] $mirror noble-security main universe
 EOF
     if sudo timeout 90 apt-get "${apt_options[@]}" update &&
-       sudo timeout 180 apt-get "${apt_options[@]}" install -y mame xvfb xauth; then
+       sudo timeout 180 apt-get "${apt_options[@]}" install -y \
+           build-essential pkg-config python3 git libsdl2-dev libsdl2-ttf-dev \
+           libfontconfig-dev libxi-dev libxinerama-dev libgl1-mesa-dev xvfb xauth; then
         exit 0
     fi
-    echo "MAME installation failed using $mirror; trying the next mirror." >&2
+    echo "MAME dependency installation failed using $mirror; trying the next mirror." >&2
 done
-echo 'Unable to install MAME from either Ubuntu mirror.' >&2
+echo 'Unable to install MAME dependencies from either Ubuntu mirror.' >&2
 exit 1
