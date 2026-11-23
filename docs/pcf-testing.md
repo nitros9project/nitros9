@@ -218,7 +218,8 @@ The `module-groups` MAME job runs a guest program against the real Level 2
 kernel. It loads two distinct callable modules from one file, tests both unlink
 orders, and repeats for a one-block file, a file spanning two 8 KB blocks, and
 two resident bootfile modules. After the first unlink the survivor must still
-execute. At each stage the guest records its process DAT image, block link
+execute. Repeating that unlink must leave its reference count, mappings, and
+physical storage unchanged, and the survivor must still execute again. At each stage the guest records its process DAT image, block link
 counts, and physical block allocation flags. The host verifies that the final
 unlink releases the group's mappings, reclaims dynamic module storage, and
 preserves resident storage. Reloading/relinking repeats each case in reverse

@@ -110,13 +110,29 @@ bfirst              ldx       moduleb,u
                     lbne      bad
 firstdone           lda       #1
                     lbsr      snapshot
+* An extra unlink of the first member must not consume the survivor's link.
+                    tst       reverse,u
+                    bne       repeatb
+                    ldx       modulea,u
+                    lbsr      unlink
+                    jsr       [entryb,u]
+                    cmpb      #$A2
+                    lbne      bad
+                    bra       repeatdone
+repeatb             ldx       moduleb,u
+                    lbsr      unlink
+                    jsr       [entrya,u]
+                    cmpb      #$A1
+                    lbne      bad
+repeatdone          lda       #2
+                    lbsr      snapshot
                     tst       reverse,u
                     bne       alast
                     ldx       moduleb,u
                     bra       last
 alast               ldx       modulea,u
 last                lbsr      unlink
-                    lda       #2
+                    lda       #3
                     lbsr      snapshot
                     tst       reverse,u
                     bne       groupdone

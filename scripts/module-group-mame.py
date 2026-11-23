@@ -12,19 +12,19 @@ ROOT=Path(__file__).resolve().parents[1]
 
 def validate(data):
     size=8+512+64
-    assert len(data)==6*3*size,('incomplete report',len(data))
+    assert len(data)==6*4*size,('incomplete report',len(data))
     cases=[]
     for case in range(1,7):
         states=[]
-        for phase in range(3):
-            record=data[((case-1)*3+phase)*size:((case-1)*3+phase+1)*size]
+        for phase in range(4):
+            record=data[((case-1)*4+phase)*size:((case-1)*4+phase+1)*size]
             assert record[:2]==bytes([case,phase]) and record[6:8]==b'GR'
             word=lambda offset:int.from_bytes(record[offset:offset+2],'big')
             states.append({'a':word(2),'b':word(4),
                 'dat':[word(8+0x40+i*2) for i in range(8)],
                 'links':[word(8+0x80+i*2) for i in range(8)],
                 'flags':list(record[8+512:])})
-        first,middle,last=states
+        first,middle,duplicate,last=states
         assert first['a']!=first['b'],(case,'modules are not distinct')
         assert all((state['a'],state['b'])==(first['a'],first['b']) for state in states)
         slot=first['a']//8192
@@ -33,6 +33,8 @@ def validate(data):
         assert middle['dat']==first['dat'],(case,'survivor mappings changed')
         expected=first['links'].copy();expected[slot]-=1
         assert middle['links']==expected,(case,'first unlink references')
+        assert duplicate['dat']==middle['dat'],(case,'double unlink changed mappings')
+        assert duplicate['links']==middle['links'],(case,'double unlink consumed survivor reference')
         expected[slot]-=1
         assert last['links']==expected,(case,'last unlink references')
         slots=[i for i in range(8) if first['dat'][i]!=last['dat'][i]]
@@ -42,6 +44,7 @@ def validate(data):
         blocks=[first['dat'][i] for i in slots]
         for block in blocks:
             assert middle['flags'][block]==first['flags'][block],(case,'premature reclaim')
+            assert duplicate['flags'][block]==middle['flags'][block],(case,'double unlink reclaimed storage')
             if case<=4:
                 assert first['flags'][block]&2,(case,'not dynamic module storage')
                 assert last['flags'][block]&3==0,(case,'dynamic storage not reclaimed')
@@ -80,7 +83,7 @@ def main():
     subprocess.run(['os9','copy',str(disk)+',group.report',str(report)],check=True,capture_output=True)
     cases=validate(report.read_bytes())
     (root/'result.json').write_text(json.dumps({'passed':True,'cases':cases},indent=2)+'\n')
-    print('PASS: two distinct modules in one file; single/multiple blocks; both unlink orders; resident preservation/dynamic reclamation; artifacts:',root)
+    print('PASS: two distinct modules in one file; single/multiple blocks; both unlink orders and extra unlink; resident preservation/dynamic reclamation; artifacts:',root)
 
 
 if __name__=='__main__':main()

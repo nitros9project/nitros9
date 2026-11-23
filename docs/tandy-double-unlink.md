@@ -61,3 +61,20 @@ MonType link. The diagnostic continued because its own executable occupied a
 separate mapping. This confirms the mapping/count problem for this deliberately
 unbalanced sequence on Tandy Level Two; it does not establish a failure for
 balanced links and unlinks, or prove a cross-process failure.
+
+## NitrOS-9 fix
+
+The NitrOS-9 Level Two `F$UnLink` now returns success without changing either
+count or the mappings if the named module's `MD$Link` is already zero. This
+prevents the extra unlink reproduced above from consuming MonType's remaining
+group reference. It preserves the existing per-module accounting; it does not
+add per-process ownership tracking for individual modules.
+
+The nightly `module-groups` regression now records four stages for each of
+its six cases: both members linked, first member unlinked, that member
+unlinked again, and the remaining member unlinked. It executes the survivor
+after both the valid and extra unlink, checks that the extra unlink changes
+neither mappings nor group count nor group storage flags, then verifies
+normal final release. Both unlink orders and single-block, multi-block,
+and resident groups are covered. The Tandy output above remains the baseline
+from the unmodified original kernel.
