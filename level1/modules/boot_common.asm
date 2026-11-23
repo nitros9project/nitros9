@@ -38,7 +38,8 @@
 *
 *          2007/08/23  Boisy G. Pitre
 * Added 'subd #$00FF' to counteract earlier 'addd #$00FF'.  We need to undo
-* to give F$SRqMem the right amount of memory to allocate.
+* to give F$SRqMem the right amount of memory to allocate. The saved bootsize
+* is now reloaded instead, recovering the same value in one fewer byte.
 *
 *          2007/08/24  Boisy G. Pitre
 * We no longer use F$SRqMem to get the 256 byte buffer for LSN0, but
@@ -109,7 +110,7 @@ start               orcc      #IntMasks           ensure IRQs are off (necessary
                     endc
                     clr       FDSL.S+1,x
                     clr       FDSL.S+2,x
-                    subd      #$00FF              undo previous add #$00FF
+                    ldd       bootsize,u          recover exact size saved before rounding
                     bra       GrabBootMem
 
 Back2Krn            lbsr      HWTerm              call HW termination routine
