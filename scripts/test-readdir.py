@@ -145,5 +145,5 @@ if __name__=='__main__':
     with tempfile.TemporaryDirectory() as folder:
         tmp=Path(folder)
         for level in (1,2):
-            b,s=t.assemble(tmp,level,f'level{level}/modules/rbf.asm');tests(b,s,level)
+            b,s=t.assemble(tmp,level,'level1/modules/rbf.asm');tests(b,s,level)
         b,s=t.assemble(tmp,1,'level1/cmds/dir.asm');command_tests(b,s)

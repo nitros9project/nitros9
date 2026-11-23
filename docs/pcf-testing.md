@@ -4,6 +4,52 @@ From the repository root, these recipe targets build their own disposable test
 images. They do not use an attached physical disk and do not record video.
 MAME runs a 512K CoCo 3 with an 80-column screen and `-nothrottle`.
 
+## Nightly CI on main
+
+The [Build workflow](../.github/workflows/build.yml) runs the full build and
+filesystem regressions every night on `main` at **09:17 UTC** (03:17 Central
+Standard Time or 04:17 Central Daylight Time). Pushes still run quick checks.
+GitHub scheduled runs use the workflow committed to the default branch.
+
+The nightly run includes:
+
+- Full product recipe builds and OS-9/Rogue boot smoke checks on both CPUs.
+- All deterministic assembled-code filesystem suites: block drivers, VHD,
+  FAT32 reads/writes, rename, review-failure recovery, parent timestamps,
+  FAT32 boot validation, directory enumeration/removal, and RFM/its fixture.
+  These suites cover Levels 1 and 2; the block-driver suite also checks both
+  CPU assembly variants.
+- Randomized CPU tests with fixed seeds `17` and `20261108`, plus the UTC date
+  as a daily seed. Each seed runs 150 operations on each OS level, retaining
+  replay traces, images, independent FAT checks, and host reference files.
+- Seven independent emulator jobs: writable PCF with cold-boot persistence
+  and its deeper CPU checks; read-only FAT32 root; PCF from an RBF floppy;
+  FAT32 OS9Boot loading; RBF recursive removal/integrity; full RFM integration;
+  and RFM directory/execution checks under IRQ polling stress.
+
+The PCF and RBF emulator jobs together run every goal in the existing
+`check-all` target. Separate jobs and a non-fail-fast matrix keep a failure in
+one filesystem from suppressing the others. The filesystem emulator recipes
+currently exercise the 6809 CoCo 3; native 6309 system/game smoke checks run
+separately. RFM integration uses the local protocol fixture, without an
+external DriveWire server.
+
+Run the same suites manually on a selected branch:
+
+```sh
+gh workflow run build.yml --ref main -f suite=filesystems
+# Include the full build and system/game smoke checks too:
+gh workflow run build.yml --ref main -f suite=all -f game=rogue
+```
+
+CPU logs and replay evidence are uploaded as `filesystem-cpu-results`.
+Each integration uploads `filesystem-SUITE-results`, including its console,
+screenshots, integrity reports and test images. These artifacts are retained
+for 14 days, including failed runs. All emulator jobs share the pinned MAME
+0.289 setup and checksum-verified ROM cache.
+
+## Local invocation
+
 ```sh
 # Watch both integrations: FAT32 (including randomized operations), then RBF.
 make -C recipes/coco3/pcf_write_mame_test demo-all

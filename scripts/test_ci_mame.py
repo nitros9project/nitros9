@@ -11,7 +11,7 @@ SCRIPT = Path(__file__).with_name('setup-ci-mame.sh')
 
 
 class MameSetupTests(unittest.TestCase):
-    def run_setup(self, failure):
+    def run_setup(self, failure, packages=()):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             for name, content in {
@@ -33,7 +33,7 @@ sys.exit(int(failure == 'all' or (mirror.startswith('https://archive.') and fail
                 path.write_text(content)
                 path.chmod(0o755)
             log = root / 'apt.log'
-            result = subprocess.run(['bash', str(SCRIPT)], env={
+            result = subprocess.run(['bash', str(SCRIPT), *packages], env={
                 **os.environ, 'PATH': str(root) + os.pathsep + os.environ['PATH'],
                 'APT_LOG': str(log), 'APT_FAILURE': failure,
             }, capture_output=True, text=True)
@@ -63,6 +63,11 @@ sys.exit(int(failure == 'all' or (mirror.startswith('https://archive.') and fail
         self.assertEqual([call[1] for call in calls], ['update', 'install'])
         self.assertNotIn('mame', calls[-1][2])
         self.assertIn('libsdl2-dev', calls[-1][2])
+
+    def test_checker_install_does_not_install_emulator_build_dependencies(self):
+        result, calls = self.run_setup('none', ('dosfstools',))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(calls[-1][2][-3:], ['install', '-y', 'dosfstools'])
 
 
 if __name__ == '__main__':

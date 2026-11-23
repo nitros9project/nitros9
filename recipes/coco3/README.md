@@ -203,8 +203,9 @@ make INFOCOM_STORY_DIR=/path/to/stories \
 
 ## GitHub MAME Boot Tests
 
-The **Build** workflow includes an optional `mame-smoke` job. It runs only
-when started manually; pushes and pull requests run the existing build checks.
+The **Build** workflow runs the full build, smoke tests, and comprehensive
+filesystem regressions nightly on `main` at 09:17 UTC. Pushes run quick checks.
+The `mame-smoke` job can also be started manually.
 From GitHub Actions, select **Build → Run workflow**, or use:
 
 ```sh
@@ -214,6 +215,9 @@ gh run watch RUN_ID
 ```
 
 Use `suite=all` to run the full build along with the smoke tests.
+This also runs the complete filesystem suites. Use `suite=filesystems` for
+the CPU regressions and seven filesystem integration jobs alone. See
+[PCF/RBF regression coverage](../../docs/pcf-testing.md#nightly-ci-on-main).
 
 The job builds the CoCo drivers from the pinned official MAME 0.289 release
 and caches the executable and Lua plugins. It verifies the version on every

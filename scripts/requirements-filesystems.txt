@@ -1,0 +1,4 @@
+MC6809==0.9.0
+pyfatfs==1.1.0
+# PyFilesystem still imports pkg_resources.
+setuptools==80.9.0
