@@ -20,7 +20,7 @@
 tylg set Prgrm+Objct
 atrv set ReEnt+rev
 rev set $00
-edition set 7
+edition             set       8         ; set assembly value
 
  mod eom,name,tylg,atrv,start,size
 
@@ -109,6 +109,8 @@ ParentReady ldx <parmptr
  os9 I$Close
  bcs CloseError
  puls b,cc
+                    bcs       Exit      ; branch on carry or error Exit
+ clrb                          Successful SetStt need not clear B
  bra Exit
 CloseError pshs b
  ldb 1,s

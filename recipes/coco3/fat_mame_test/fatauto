@@ -1,0 +1,23 @@
+mdir
+echo FAT32 integration checks
+dir /pc0
+dir /pc0 >/dd/fatdir
+dir -e /pc0
+dir -e /pc0 >/dd/fatdire
+list /pc0/hello.txt
+list /pc0/hello.txt >/dd/fathello
+copy /pc0/frag.bin /dd/fatfrag
+cmp /pc0/frag.bin /dd/fatfrag >/dd/fatcmp
+list /dd/fatcmp
+chd /pc0/subdir
+list nest.txt
+list nest.txt >/dd/fatnest
+chd child
+chd ...
+list hello.txt >/dd/fatparent
+chd /dd
+chx /pc0/subdir
+/dd/cmds/dir -x >/dd/fatxdir
+chx /dd/cmds
+echo FAT32DONE >/dd/fatdone
+echo FAT32 checks complete
