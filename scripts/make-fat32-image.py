@@ -22,7 +22,9 @@ def main():
     args.image.parent.mkdir(parents=True,exist_ok=True)
     args.image.touch()
     fat=PyFat()
-    fat.mkfs(str(args.image),PyFat.FAT_TYPE_FAT32,size=SIZE,label='FAT32TEST')
+    # PyFatFS encodes the root volume label through its 8.3 name helper.
+    # Keep the label within eight characters so it matches both boot copies.
+    fat.mkfs(str(args.image),PyFat.FAT_TYPE_FAT32,size=SIZE,label='FAT32TST')
     fat.close()
     with PyFatFS(str(args.image),preserve_case=False) as fs:
         fs.writebytes('/HELLO.TXT',HELLO)

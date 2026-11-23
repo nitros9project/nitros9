@@ -9,7 +9,7 @@ output=$(cd "$output" && pwd)
 python=${PYTHON:-python3}
 status=0
 tests=(
-    test-blkdrv test-cocovhd test-fat32 test-pcf-write test-pcf-rename
+    test-fat32-image test-blkdrv test-cocovhd test-fat32 test-pcf-write test-pcf-rename
     test-pcf-review test-pcf-parent-time test-boot-fat32 test-readdir
     test-deldir test-rename test-rfm test-rfm-fixture
 )
