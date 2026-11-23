@@ -110,13 +110,24 @@ jobs:
         sudo apt-get install -y mame xvfb xauth
         echo "/usr/games" >> "$GITHUB_PATH"
 
+    - name: Cache ROM archives
+      id: rom-cache
+      uses: actions/cache@v5
+      with:
+        path: ${{ runner.temp }}/roms
+        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
+
     - name: Download and verify ROM archives
+      id: roms
       run: |
         mkdir -p "$RUNNER_TEMP/roms"
         cd "$RUNNER_TEMP/roms"
         for archive in coco3 coco3h coco_fdc; do
-          curl --fail --location --retry 3 --max-time 60 \
-            "https://colorcomputerarchive.com/repo/ROMs/MAME-MESS/$archive.zip" -o "$archive.zip"
+          if [ ! -s "$archive.zip" ]; then
+            curl --ipv4 --fail --location --retry 3 --retry-all-errors \
+              --connect-timeout 10 --max-time 60 \
+              "https://colorcomputerarchive.com/repo/ROMs/MAME-MESS/$archive.zip" -o "$archive.zip"
+          fi
         done
         sha256sum --check <<'HASHES'
         a7e35287874ca75f119ae1aeb565eb5edf4049f3fa733a68c4142b58f2d17c42  coco3.zip
@@ -128,7 +139,7 @@ jobs:
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6809 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6809"
 
     - name: Boot 6309 floppy
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && steps.roms.outcome == 'success' }}
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6309 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6309"
 
     - name: Boot selected game on both CPUs
