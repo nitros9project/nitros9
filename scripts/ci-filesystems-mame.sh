@@ -16,6 +16,7 @@ case "$suite" in
     pcf-readonly) make -C recipes/coco3/fat_root_mame_test "${common[@]}" check ;;
     pcf-floppy) make -C recipes/coco3/fat_mame_test "${common[@]}" check ;;
     pcf-boot) make -C recipes/coco3/fat_boot_mame_test "${common[@]}" check ;;
+    module-groups) make -C recipes/coco3/module_group_mame_test "${common[@]}" check ;;
     rbf) make -C recipes/coco3/rbf_mame_test "${common[@]}" check ;;
     rfm) make -C recipes/coco3/rfm_mame_test "${common[@]}" check ;;
     rfm-irq)
