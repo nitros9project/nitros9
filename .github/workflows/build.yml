@@ -198,7 +198,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq]
+        suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq, module-groups]
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -238,6 +238,7 @@ jobs:
           recipes/coco3/fat_mame_test/.fat-test/
           recipes/coco3/fat_boot_mame_test/.fat-test/
           recipes/coco3/rbf_mame_test/.rbf-test/
+          recipes/coco3/module_group_mame_test/.group-test/
           recipes/coco3/rfm_mame_test/.rfm-test/
         retention-days: 14
         if-no-files-found: ignore
