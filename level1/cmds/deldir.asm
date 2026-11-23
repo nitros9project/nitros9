@@ -56,7 +56,7 @@ name                fcs       /Deldir/
 
 start               bsr       OpenPath
                     bcs       OpenErr
-                    lbsr      IsDirectory ; call helper IsDirectory
+                    bsr       IsDirectory ; call helper IsDirectory
                     bcc       L002B
                     lbsr      PromptUser
                     bcs       OpenErr
@@ -265,7 +265,7 @@ L0214               rts
 L0215               lda       <fpath
                     leax      <u0024,u
                     ldy       #RD.NameSize ; load Y from #RD.NameSize
-                    lbsr      ReadDirCompat ; support portable and legacy file managers
+                    bsr       ReadDirCompat ; support portable and legacy file managers
                     bcs       L0238
                     lda       ,x
                     beq       L0215
