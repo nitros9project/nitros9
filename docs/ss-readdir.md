@@ -1,8 +1,8 @@
 # SS.ReadDir ($2E)
 
 `I$GetStt` returns the next directory entry through the file manager. `dir`
-uses this interface for ordinary and extended listings, with a compatibility
-fallback for older RBF implementations.
+uses this interface for ordinary and extended listings; `deldir` uses it for
+recursive enumeration. Both commands require file-manager support for `SS.ReadDir`.
 
 ## Calling convention
 
@@ -53,11 +53,10 @@ interrupts masked until the full wire transaction has finished. An older
 server ignores the unknown status; the bounded ready timeout returns
 `E$UnkSvc` without sending a stray count into its opcode parser.
 
-On `E$UnkSvc` only, `dir` and `deldir` fall back to 32-byte `I$Read`
-records, filtering free entries and exact `.`/`..` names. Extended `dir` uses
-`SS.FDInf` to append the 13-byte metadata prefix. Other errors propagate without
-fallback. This preserves older RBFs and older RFM servers that implement those
-legacy interfaces. File managers with neither enumeration interface still fail.
+`dir` and `deldir` propagate `E$UnkSvc` when enumeration is unsupported.
+They do not read raw RBF directory records or use `SS.FDInf` as a fallback.
+Older RBF modules and older RFM servers must implement `SS.ReadDir` to work
+with these commands.
 
 The DriveWire record bytes are the same guest ABI, not a host-native structure:
 

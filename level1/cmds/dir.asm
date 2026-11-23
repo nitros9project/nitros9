@@ -223,7 +223,8 @@ L0253               leax      <dent,u
                     beq       RDCall    ; branch when equal or zero RDCall
                     ldy       #RD.Size  ; load Y from #RD.Size
 RDCall              lda       <dirpath  ; load A from <dirpath
-                    lbsr      ReadDirCompat ; support portable and legacy file managers
+                    ldb       #SS.ReadDir ; request portable directory enumeration
+                    os9       I$GetStt  ; return the file manager result
                     lbcc      L01C5
                     cmpb      #E$EOF
                     bne       L0268
@@ -416,7 +417,6 @@ SkipNSpc            lda       ,x+
 SkipNRTS            leax      -1,x
                     rts
 
-                    use       ../level1/cmds/readdir-compat.asm ; include shared definitions or implementation
                     emod
 eom                 equ       *
                     end
