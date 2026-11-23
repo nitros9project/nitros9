@@ -32,13 +32,14 @@ emu.register_frame_done(function()
     end
 end)
 LUA
+# The default floppy recipe builds a 40-track disk, requiring a 525dd drive.
 # Run in the output directory so screenshots and MAME state stay with the logs.
 (
     cd "$output"
     timeout 180 "$mame_binary" "$machine" -rompath "$rompath" \
         -cfg_directory cfg -nvram_directory nvram -snapshot_directory snap \
         -skip_gameinfo -sound none -video soft -window -nothrottle -ram 512K \
-        -ext fdc,bios=v11 -ext:fdc:wd17xx:0 525qd \
+        -ext fdc,bios=v11 -ext:fdc:wd17xx:0 525dd \
         -flop1 test.dsk -autoboot_delay 3 -autoboot_script boot.lua \
         -seconds_to_run 90 > mame.log 2>&1
 )

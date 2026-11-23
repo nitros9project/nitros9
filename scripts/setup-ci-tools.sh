@@ -20,6 +20,7 @@ HASHES
 
 tar xzf lwtools.tar.gz
 make -C lwtools-4.25 -j2 PREFIX="$prefix" install
-# Recipes need the OS-9 command suite; avoid extracting unrelated binaries.
-tar xzf toolshed.tgz --strip-components=1 -C "$prefix/bin" toolshed-2.6.1/os9
-chmod +x "$prefix/bin/os9"
+# Recipes need the OS-9 command suite and Sierra's host table generator.
+tar xzf toolshed.tgz --strip-components=1 -C "$prefix/bin" \
+    toolshed-2.6.1/os9 toolshed-2.6.1/tocgen
+chmod +x "$prefix/bin/os9" "$prefix/bin/tocgen"
