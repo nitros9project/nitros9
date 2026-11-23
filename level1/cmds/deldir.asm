@@ -265,7 +265,8 @@ L0214               rts
 L0215               lda       <fpath
                     leax      <u0024,u
                     ldy       #RD.NameSize ; load Y from #RD.NameSize
-                    bsr       ReadDirCompat ; support portable and legacy file managers
+                    ldb       #SS.ReadDir ; request portable directory enumeration
+                    os9       I$GetStt  ; return the file manager result
                     bcs       L0238
                     lda       ,x
                     beq       L0215
@@ -332,7 +333,6 @@ L0270               decb
                     bne       L0270
                     rts
 
-                    use       ../level1/cmds/readdir-compat.asm ; include shared definitions or implementation
                     emod
 eom                 equ       *
                     end

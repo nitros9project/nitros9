@@ -244,4 +244,4 @@ STDCMDS = asm attr backup bawk binex build cmp copy date dcheck debug \
 
 # Shared executable includes must rebuild their consumers after review changes.
 $(MODDIR)/rbf: $(L1MD)/rbf-readdir.asm $(DEFSDIR)/readdir.d
-$(addprefix $(MODDIR)/,dir deldir): $(L1CD)/readdir-compat.asm $(DEFSDIR)/readdir.d
+$(addprefix $(MODDIR)/,dir deldir): $(DEFSDIR)/readdir.d
