@@ -36,7 +36,13 @@ edition             set       $05
 
                     org       0
 InitAddr            rmb       2
+                    ifgt      Level-1
+* F$GPrDsc copies a full descriptor here; keep the stack above it.
+                    rmb       P$Size-2
                     rmb       250
+                    else
+                    rmb       250
+                    endc
 size                equ       .
 
 name                fcs       /SysGo/
@@ -181,6 +187,9 @@ start               leax      >IcptRtn,pcr
                     lda       #$01
                     os9       I$Write
                     bsr       WriteCR
+
+* Release Init and its bootfile mappings before mapping system memory.
+                    os9       F$UnLink
 
 * Show rest of banner
 SignOn

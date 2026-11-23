@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Boot local OS-9 in CoCo 3 MAME and verify guest FAT/blkdrv results on disk."""
+import importlib.util
 import argparse
 import hashlib
 import re
@@ -39,10 +40,18 @@ def main():
     before=digest(media)
     lua=root/'run.lua'
     commands=(ROOT/'recipes/coco3/fat_mame_test/fatauto').read_text().splitlines()
-    lua.write_text('commands={\n'+
-        ''.join(' '+json.dumps(command+'\n')+',\n' for command in commands if command)+
-        '}\nsnapshot_path='+json.dumps(str(root/'screen.png'))+'\n'+
-        (ROOT/'scripts/fat32-mame.lua').read_text())
+    spec=importlib.util.spec_from_file_location('disk_script',ROOT/'scripts/mame-script.py')
+    disk_script=importlib.util.module_from_spec(spec);spec.loader.exec_module(disk_script)
+    (root/'TEST.CMD').write_bytes(disk_script.script(commands+['echo PCFREADONLYPASS']))
+    (root/'STARTUP').write_bytes(b'shell /dd/test.cmd\r')
+    for name in ('TEST.CMD','STARTUP'):
+        subprocess.run(['os9','copy','-r',str(root/name),str(disk)+','+name.lower()],check=True,capture_output=True)
+    source='completion_marker="PCFREADONLYPASS"\n'
+    for key,name in [('snapshot_path','screen.png'),('console_path','console.log'),('errors_path','errors.log'),('writes_path','writes.log'),('reads_path','reads.log')]:
+        source+=key+'='+json.dumps(str(root/name))+'\n'
+    source+=(ROOT/'scripts/fat32-root-mame.lua').read_text()
+    source+=(ROOT/'scripts/mame-disk-script.lua').read_text()
+    lua.write_text(source)
     command=[args.mame,'coco3','-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
         '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-hard1',str(media),
@@ -61,6 +70,9 @@ def main():
             raise RuntimeError('MAME wall-clock timeout; inspect screen.png')
     if process.returncode:raise RuntimeError('MAME failed; inspect mame.log')
     assert digest(media)==before,'read-only FAT32 image changed'
+    console=(root/'console.log').read_bytes()
+    assert b'PCFREADONLYPASS' in console,'guest script did not complete'
+    assert not (root/'writes.log').read_text().strip(),'read-only suite issued VHD writes'
     def extract(name):
         dest=root/name
         dest.unlink(missing_ok=True)
