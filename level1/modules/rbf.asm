@@ -141,17 +141,17 @@ RBF6309             equ       UNTESTED_H6309
 RBF6309             equ       H6309
                   ENDC
 
+* Keep Level 2-only optimizations disabled in Level 1, even when its
+* existing experimental 6309 paths are enabled.
+RBF6309L2           equ       (Level-1)*RBF6309
+
 
 rev                 set       $00
 ty                  set       FlMgr
-                  IFEQ    Level-1
-lg                  set       Objct
-                  ELSE
-                  IFNE    RBF6309
+                  IFNE    RBF6309L2
 lg                  set       Obj6309
                   ELSE
 lg                  set       Objct
-                  ENDC
                   ENDC
 tylg                set       ty+lg
 atrv                set       ReEnt+rev
@@ -161,12 +161,7 @@ edition             set       27
 edition             set       38
                   ENDC
 
-                  IFEQ    Level-1
 size                equ       0         ; not used in a file manager.
-                  ELSE
-                    org       $00
-size                equ       .
-                  ENDC
 
                     mod       eom,name,tylg,atrv,start,size
 
@@ -253,8 +248,6 @@ Creat47             cmpb      #E$PNNF   ; not found?
                     clra
                     ldb       #$01
                     lbsr      FatScan
-                    bcc       Creat83
-                    leas      $06,s
                   ELSE
                     ldx       PD.RGS,y  ; get register stack pointer
 * Calculate default file size, if enabled
@@ -273,11 +266,11 @@ Creat6E             addd      #1        ; above 64k in size? (bug fix, thanks Ge
                     bcc       Creat75   ; no, skip ahead: changed from BCC
                     ldd       #$FFFF    ; force it to 64k
 Creat75             lbsr      FatScan   ; find the space in the allocation map
+                  ENDC
                     bcc       Creat83   ; got it, skip ahead
                     leas      6,s       ; purge segment sizes from stack
 * and fall through to routine which returns with an error.
 
-                  ENDC
 Creat7C             leas      2,s       ; purge user's pathname pointer
 Creat7E             leas      5,s       ; purge local data
                     lbra      ErMemRtn  ; return with error
@@ -387,11 +380,9 @@ Creat131            ldb       ,s        ; get p hysical sector # of segment star
                     lbsr      L0A2A     ; update file/record lock for this sector
                     leas      $05,s     ; purge sector buffer from stack
                   IFGT    Level-1
-                  IFGT    Level-1
                     ldx       PD.Exten,y ; get path extension pointer
                     lda       #EofLock  ; set the file to EOF lock
                     sta       PE.Lock,x
-                  ENDC
                   ENDC
                     lbra      Open1CC
 * Error on FD write to disk
@@ -546,20 +537,18 @@ Open1CE
                     pshs      u         ; save the FD sector buffer pointer
                     lbsr      FirstMate ; is another path open on this file?
                     beq       Open208   ; no, use the size in the FD
-                    ldd       PD.SIZ,u  ; yes, use its size, which may be newer
-                    ldx       PD.SIZ+2,u
-Open208             puls      u         ; restore the FD sector buffer pointer
                   ELSE
                     ldu       PD.Exten,y ; get path extension pointer
-                  IFGT    Level-1
                     cmpu      PE.Confl,u ; head of the conflict tree?
                     beq       Open209   ; yes, skip ahead
                     ldu       PE.Confl,u ; get the conflicting path ext. pointer
                     ldu       PE.PDptr,u ; get back pointer to the PD of conflicting process
-* ldq PD.SIZ,u
-                    ldd       PD.SIZ,u  ; get his size instead
-                    ldx       PD.SIZ+2,u
                   ENDC
+* ldq PD.SIZ,u
+                    ldd       PD.SIZ,u  ; get the other path's current size
+                    ldx       PD.SIZ+2,u
+                  IFEQ    Level-1
+Open208             puls      u         ; restore the FD sector buffer pointer
                   ENDC
 * stq PD.SIZ,y
 Open209             std       PD.SIZ,y  ; set file size in path descriptor of caller
@@ -580,21 +569,16 @@ ex                  rts                 ; return
 *
 MakDir              lbsr      Create    ; create a file descriptor
                     bcs       MDir261   ; problem, return error
-                  IFEQ    Level-1
-                    ldd       #$0040
-                    std       <$11,y
-                    bsr       MDir273
-                    bcs       MDir261
-                  ELSE
+                  IFGT    Level-1
                     lda       PD.ATT,y  ; get attributes
                     ora       #SHARE.   ; set shareable bit
                     lbsr      ChkAttrs  ; can user access directory?
                     bcs       MDir261   ; no, return error
+                  ENDC
                     ldd       #DIR.SZ*2 ; get default directory size (for '.' & '..')
                     std       PD.SIZ+2,y ; save it in path descriptor (MSW set to 0)
                     bsr       MDir273   ; write out file descriptor
                     bcs       MDir261   ; error, return
-                  ENDC
                     lbsr      L0C6F
                     bcs       MDir261
                     lbsr      RdFlDscr  ; read in file descriptor
@@ -693,11 +677,9 @@ Rt100Mem            pshs      b,cc      ; preserve error status
                     ldx       PD.Exten,y ; get path extension pointer
                     beq       RtMem2CF  ; none, return
                     lbsr      L0A90     ; scan conflict list?
-                  IFGT    Level-1
                     lda       PE.PE,x   ; return path extension to system
                     ldx       <D.PthDBT
                     os9       F$Ret64
-                  ENDC
                   ENDC
 RtMem2CF            puls      pc,b,cc   ; restore error status & return
 
@@ -707,29 +689,24 @@ SetMTime            lbsr      RdFlDscr  ; read in file descriptor sector
                     lda       FD.LNK,u  ; get link count
                   IFEQ    Level-1
                     pshs      a
-                    leax      $03,u
-                    os9       F$Time
-                    puls      a
-                    sta       $08,u
-                    rts
                   ELSE
                     ldx       <D.Proc   ; get current process pointer
                     pshs      x,a       ; preserve 'em
-                  IFGT    Level-1
                     ldx       <D.SysPrc ; switch to system process descriptor
                     stx       <D.Proc
                   ENDC
                     leax      FD.DAT,u  ; point to date last modified
                     os9       F$Time    ; put currenttime there
+                  IFEQ    Level-1
+                    puls      a
+                  ELSE
 * Gene Heskett's STUPID "LDA #$01, STA $00FF,u" CRAP went here. DAMN DAMN DAMN
 * He's NEVER getting the RBF source again!
                     puls      x,a       ; restore link count & current process
-                  IFGT    Level-1
                     stx       <D.Proc
                   ENDC
                     sta       FD.LNK,u
                     rts                 ; return
-                  ENDC
 
 
 *
@@ -903,9 +880,6 @@ L0304
                     clra
                     clrb
                     std       $0F,y
-                    std       <$11,y
-                    lbsr      L0EFE
-                    bcs       Clos2A02
                   ELSE
                     pshs      u,x,b
                   IFNE    RBF6309
@@ -954,8 +928,12 @@ Del37A              std       $03,s     ; save buffer pointer to U on stack
                     clrb
                   ENDC
                     std       PD.SIZ,y  ; set file size to zero
+                  ENDC
                     std       PD.SIZ+2,y
                     lbsr      L0EFE     ; set the file size to PD.SIZ
+                  IFEQ    Level-1
+                    bcs       Clos2A02
+                  ELSE
                     bcs       Del3EF
                   ENDC
                     ldb       PD.FD,y   ; grab file descriptor sector number
@@ -977,14 +955,10 @@ Del37A              std       $03,s     ; save buffer pointer to U on stack
 * the defines to match the $13,x address.
 *         ldd   FD.SEG+FDSL.B,x	grab the size of the first segment
                     ldd       <$13,x    ; this code is REQUIRED for multiple
-                  IFEQ    Level-1
-                    addd      #$0001    ; sector cluster operation, DO NOT REMOVE!
-                  ELSE
-                  IFNE    RBF6309
+                  IFNE    RBF6309L2
                     incd                ; sector/cluster operation, don't remove!
                   ELSE
                     addd      #$0001    ; sector cluster operation, DO NOT REMOVE!
-                  ENDC
                   ENDC
                     std       PD.SSZ+1,y
                     lbsr      ClrFBits  ; delete a segment
@@ -1111,17 +1085,9 @@ RdLn430             leay      1,y       ; go up one byte
                     bne       RdLn430   ; until done one sector, at least
 RdLn439
                     ldx       6,s       ; get old U
-                  IFEQ    Level-1
                     bsr       CopyToCaller ; move bytes from the system to user
                     sty       $0A,s     ; save Y on-stack, above calling routine????
                     puls      u,y,x,b,a ; restore registers
-                  ELSE
-                  IFGT    Level-1
-                    bsr       CopyToCaller ; move bytes from the system to user
-                    sty       $0A,s     ; save Y on-stack, above calling routine????
-                    puls      u,y,x,b,a ; restore registers
-                  ENDC
-                  ENDC
                     ldd       $02,s     ; get old saved Y from above
 *         addr  d,x
                     leax      d,x       ; point to how many bytes we've read
@@ -1133,11 +1099,7 @@ RdLn447             bsr       Read4D3   ; do reading, calling this routine back 
                   ELSE
 RdLn447             lbsr      Read4D3   ; do reading, calling this routine back again
                     leax      -1,x      ; back up a byte
-                  IFGT    Level-1
                     lbsr      L097F     ; get a byte from another task (F$LDABX)
-                  ELSE
-                    lda       b,x
-                  ENDC
                   ENDC
                     cmpa      #$0D      ; is it a CR?
                     beq       RdLn459   ; yes, skip ahead
@@ -1193,11 +1155,7 @@ RdLn473             pshs      d         ; preserve length
                     tstb
                     bne       RdLn491
                     cmpx      ,s        ; do we have enough bytes?
-                  IFEQ    Level-1
-                    bcc       RdLn491
-                  ELSE
-                    bhs       RdLn491   ; yes, return OK
-                  ENDC
+                    bcc       RdLn491   ; yes, return OK
                     stx       ,s        ; save # bytes available
                     beq       RdLn494   ; it's 0, return EOF error
 RdLn491             clrb                ; clear error status
@@ -1212,7 +1170,6 @@ CopyToCaller        lbra      Writ5CB   ; continue unconditionally Writ5CB
                   ELSE
                     bra       ReadUnlockReturn ; return
 
-                  IFGT    Level-1
 * Move bytes from system to user
 * Entry: X=Source pointer
 *        Y=Byte count
@@ -1225,7 +1182,6 @@ CopyToCaller
                     puls      x
                     os9       F$Move    ; move 'em
                     rts                 ; return
-                  ENDC
 
                   ENDC
 
@@ -1243,22 +1199,12 @@ Read                bsr       RdLn463   ; record locked?
                     beq       Read4BB   ; no, allow it
                     bsr       Read4BC   ; do reading
 Read4AF
-                  IFEQ    Level-1
                     pshs      u,y,x,b,a ; save data on the stack
                     exg       x,u
                     tfr       d,y
                     bsr       CopyToCaller ; move bytes from system to user
                     puls      u,y,x,b,a ; restore registers
-                  ELSE
-                  IFGT    Level-1
-                    pshs      u,y,x,b,a ; save data on the stack
-                    exg       x,u
-                    tfr       d,y
-                    bsr       CopyToCaller ; move bytes from system to user
-                    puls      u,y,x,b,a ; restore registers
-                  ENDC
 *         addr  d,x
-                  ENDC
                     leax      d,x       ; point to end of data copied?
 Read4BB             rts
 
@@ -1275,9 +1221,7 @@ ReadUnlockReturn    pshs      b,cc      ; preserve error status
                     lda       PD.MOD,y  ; get file mode
                     bita      #WRITE.   ; was it write?
                     bne       Read4D0   ; yes, return
-                  IFGT    Level-1
                     lbsr      L0B02     ; clear lock status, and send signals
-                  ENDC
 Read4D0             puls      b,cc,pc   ; restore & return
                   ENDC
 
@@ -1368,30 +1312,22 @@ WriteLn             pshs      y         ; save PD pointer
                     clrb
                     ldy       R$Y,u     ; grab size of data to write
                     beq       WtLn55E   ; exit if none
-                  IFEQ    Level-1
-                    ldx       R$X,u
-                  ELSE
                   IFGT    Level-1
                     ldx       <D.Proc   ; get process descriptor pointer
                     ldb       P$Task,x  ; grab task number
+                  ENDC
                     ldx       R$X,u     ; and where to get data from
 * ATD: Could make this quite a bit larger, and probably faster, by doing the
 * PipeMan-style copy 32 bytes onto the stack via F$Move, and check that.
 * Doing F$LDABX for a lot of data is _really_ slow.  PipeMan test indicate
 * that it could probably double in speed...
-                  ENDC
-                  ENDC
 WtLn547             leay      -$01,y    ; back up one byte
                     beq       WtLn55E   ; if done, exit
                   IFEQ    Level-1
                     lda       ,x+
                   ELSE
-                  IFGT    Level-1
                     os9       F$LDABX   ; grab one byte from the user
                     leax      $01,x     ; go up a byte
-                  ELSE
-                    lda       ,x+
-                  ENDC
                   ENDC
                     cmpa      #$0D      ; is it a CR?
                     bne       WtLn547   ; no, keep it up until done
@@ -1416,20 +1352,15 @@ WtLn55E             puls      y         ; restore PD pointer, and fall through t
 *        B = errcode
 *
 Write               ldd       R$Y,u     ; get size of write
-                  IFEQ    Level-1
-                    beq       Writ597
-                    bsr       Writ599
-                    bcs       Writ598
-                    bsr       L04B5
-                  ELSE
+                  IFGT    Level-1
                     lbsr      L0B0C     ; wait for I/O lock
                     bcs       Writ598   ; error, return
                     ldd       R$Y,u     ; get size again
+                  ENDC
                     beq       Writ597   ; zero, nothing to write so return
                     bsr       Writ599   ; expand the file if needed
                     bcs       Writ598   ; error on expand, return
                     bsr       Writ582
-                  ENDC
 Writ571
                     pshs      y,b,a
                     tfr       d,y
@@ -1452,17 +1383,11 @@ Writ571
                   ENDC
                   ENDC
                     rts
-                  IFEQ    Level-1
-L04B5               lbsr      Read4D3
-                  ELSE
 
 Writ582             lbsr      Read4D3   ; go read stuff
-                  ENDC
                     lbne      Read4D9
-                  IFEQ    Level-1
-                    leas      $08,s
-                  ELSE
                     leas      $08,s     ; skip stuff on stack
+                  IFGT    Level-1
                     ldy       PD.Exten,y
                     lda       #$01
                     lbsr      L0AD1
@@ -1531,14 +1456,12 @@ L0515               cmpx      ,s
 L051B               puls      pc,u,y,x
                   ELSE
 Writ5CB
-                  IFGT    Level-1
                     pshs      x
                     ldx       <D.Proc   ; get source task #
                     lda       P$Task,x
                     ldb       <D.SysTsk ; get destination task #
                     puls      x
                     os9       F$Move    ; move 'em
-                  ENDC
                     rts                 ; return
                   ENDC
 
@@ -1553,11 +1476,7 @@ Writ5CB
 *        B = errcode
 *
 GetStat             ldb       R$B,u     ; get function code
-                  IFEQ    Level-1
-                    beq       Gst5FFX   ; it's SS.Opt, go process
-                  ELSE
-                    beq       Gst5FF    ; it's SS.Opt, go process
-                  ENDC
+                    beq       GstSizeReturn ; it's SS.Opt, go process
                     cmpb      #SS.ReadDir ; compare B with #SS.ReadDir
                     lbeq      RDRead    ; branch when equal or zero RDRead
                     cmpb      #SS.EOF   ; eof check?
@@ -1583,15 +1502,8 @@ Gst5EB              cmpb      #SS.Ready ; is it SS.Ready?
 *       U=lsw of files size
 Gst5F2              cmpb      #SS.Size  ; is it SS.Size?
                     bne       Gst600    ; no, keep checking
-                  IFEQ    Level-1
-                    ldd       PD.SIZ,y
-                    std       R$X,u
-                    ldd       PD.SIZ+2,y
-                    std       R$U,u
-Gst5FFX             rts                 ; return
-                  ELSE
-                  IFNE    RBF6309
-* faster and smaller than 2 LDD's, PD.SIZ+2 >$0F, so we can't use short n,R
+                  IFNE    RBF6309L2
+* PD.SIZ+2 is beyond the five-bit indexed range, so LDQ/STW is smaller.
                     ldq       PD.SIZ,y  ; get current file size
 Gst5F8              std       R$X,u     ; save to the user
                     stw       R$U,u     ; save LSW
@@ -1601,8 +1513,11 @@ Gst5F8              std       R$X,u     ; save to the user
                     ldd       PD.SIZ+2,y
                     std       R$U,u
                   ENDC
-Gst5FF              rts                 ; return
+                  IFGT    Level-1
+Gst5FF
                   ENDC
+GstSizeReturn       rts
+
 
 * SS.Pos
 * Entry A=path num
@@ -1611,16 +1526,7 @@ Gst5FF              rts                 ; return
 *       U=lsw of pos
 Gst600              cmpb      #SS.Pos   ; is it SS.Pos?
                     bne       Gst60D    ; no, keep checking
-                  IFEQ    Level-1
-                    ldd       PD.CP,y   ; get current file pointer
-                    std       R$X,u     ; save MSW
-                    ldd       PD.CP+2,y ; get current file pointer
-                    std       R$U,u     ; save LSW
-Gst5FF
-                    rts
-                  ELSE
-                  IFNE    RBF6309
-* use 2 LDD, STD, same size as ldq/std/stw, PD.CP+2 <$0F, we can use short n,R
+                  IFNE    RBF6309L2
                     ldq       PD.CP,y   ; get current file pointer
                     bra       Gst5F8
                   ELSE
@@ -1628,9 +1534,12 @@ Gst5FF
                     std       R$X,u     ; save MSW
                     ldd       PD.CP+2,y ; get current file pointer
                     std       R$U,u     ; save LSW
+                  IFEQ    Level-1
+Gst5FF
+                  ENDC
                     rts
                   ENDC
-                  ENDC
+
 
 * Getstt(SS.FD)
 * Entry: R$A = Path #
@@ -1640,11 +1549,7 @@ Gst5FF
 Gst60D              cmpb      #SS.FD    ; is it SS.FD?
                     bne       Gst627    ; no, keep checking
                     lbsr      RdFlDscr  ; go get file descriptor
-                  IFEQ    Level-1
-                    bcs       Gst5FFX   ; exit on error
-                  ELSE
-                    bcs       Gst5FF    ; exit on error
-                  ENDC
+                    bcs       GstSizeReturn ; exit on error
                     ldu       PD.RGS,y  ; get register stack pointer
                     ldd       R$Y,u     ; get # bytesof FD he wants
                     tsta                ; legal value?
@@ -1732,11 +1637,7 @@ Sst682              std       PD.SIZ,y
                     stu       PD.CP+2,y
                     rts
 * Return bad mode error
-                  IFEQ    Level-1
-Sst697              comb
-                  ELSE
 Sst697              comb                ; set carry
-                  ENDC
                     ldb       #E$BMode  ; get bad mod error
                   IFEQ    Level-1
                     rts
@@ -1793,8 +1694,6 @@ Sst6CB              pshs      u,x
 
                   IFEQ    Level-1
 Sst6D9              cmpb      #$1E
-                    bne       L0614
-                    ldx       <$1E,y
                   ELSE
 Sst6D9              cmpb      #SS.Lock  ; is it SS.Lock?
                     bne       Sst6F8    ; no, keep checking
@@ -1898,7 +1797,11 @@ Sst782              coma                ; set carry
 
 * SetStt(SS.FSig)
 Sst784              cmpb      #SS.FSig  ; ss.FSig send signal on write
+                  ENDC
                     bne       Sst7A3
+                  IFEQ    Level-1
+                    ldx       <$1E,y
+                  ELSE
                     lda       PD.ATT,y
                     bita      #SHARE.
                     lbne      L0A8B
@@ -1916,12 +1819,7 @@ Sst784              cmpb      #SS.FSig  ; ss.FSig send signal on write
                     clrb
                   ENDC
                     rts
-                  IFEQ    Level-1
-L0614               lda       #$0C
-                  ELSE
-
 Sst7A3              lda       #D$PSTA   ; call the driver SetStt routine
-                  ENDC
                     lbra      L113C
 
 Sst7A8              comb
@@ -1938,13 +1836,10 @@ FindFile
                   IFGT    Level-1
                     ldd       #$0100    ; get size of sector
 * Note, following line is stb PD.SMF,y in v30!
-                  IFGT    Level-1
                     stb       PD.FST,y  ; clear state flags??
-                  ENDC
                     os9       F$SRqMem  ; request a 256 byte sector buffer
                     bcs       Sst7AB    ; couldn't get memory, return with error
                     stu       PD.BUF,y  ; save ptr to sector buffer
-                  IFGT    Level-1
                     leau      ,y        ; point U to path descriptor
                     ldx       <D.PthDBT ; get ptr to path descriptor block tables
                     os9       F$All64   ; allocate path descriptor
@@ -1954,7 +1849,6 @@ FindFile
                     clr       PE.SigID,u ; clear send signal proc. ID
                     sty       PE.PDptr,u ; save back pointer to path descriptor
                     stu       PE.Wait,u ; init waiting extension to myself
-                  ENDC
 
 
 **** ADDED 06/19/2004 ****
@@ -2008,11 +1902,7 @@ ok@                 ldd       #256
                   IFEQ    Level-1
                     lda       ,x
                   ELSE
-                  IFGT    Level-1
                     lbsr      L097F     ; get a byte from caller's X
-                  ELSE
-                    lda       b,x
-                  ENDC
                   ENDC
                     sta       ,s        ; save it
                     cmpa      #PDELIM   ; is it a device?
@@ -2070,19 +1960,10 @@ Sst83F              lbsr      L1110     ; read in LSN0
                     bne       Sst861    ; yes, skip ahead
                     lda       PD.FD,y
                     bne       Sst861
-                  IFEQ    Level-1
-                    lda       DD.DIR,u  ; get LSN of root directory
-                  ELSE
                     lda       DD.DIR,u  ; get MSB of LSN of root directory
-                  ENDC
                     sta       PD.FD,y   ; put it in path descriptor
-                  IFEQ    Level-1
-                    ldd       DD.DIR+1,u
-                    std       PD.FD+1,y
-                  ELSE
                     ldd       DD.DIR+1,u ; also get LSW of LSN of root directory
                     std       PD.FD+1,y ; also put it in path descriptor
-                  ENDC
 Sst861              stx       $04,s     ; save pointer to pathname
                     stx       $08,s
 
@@ -2120,7 +2001,6 @@ Sst87B              lbsr      L0A2A     ; check if directory is busy
                     lbsr      ChkEnd    ; is the name followed by a legal character?
                     bcs       L090D     ; no, return the error
                   IFGT    Level-1
-                  IFGT    Level-1
                     pshs      u,y
                     ldu       PD.Exten,y ; get pointer to path extension
                     leau      PE.FilNm,u ; point to filename buffer
@@ -2128,7 +2008,6 @@ Sst87B              lbsr      L0A2A     ; check if directory is busy
                     tfr       d,y       ; move it to Y
                     lbsr      Writ5CB   ; move filename to temp area
                     puls      u,y
-                  ENDC
                   ENDC
                     lbsr      ReadDirectoryEntry ; read in a directory sector
                     bra       L08C1
@@ -2323,11 +2202,7 @@ L0992               pshs      a         ; preserve last character
                   IFEQ    Level-1
                     lda       ,x
                   ELSE
-                  IFGT    Level-1
                     bsr       L097F     ; get next character
-                  ELSE
-                    lda       b,x
-                  ENDC
                   ENDC
                     cmpb      #$03      ; third character of DIR?
                     bcs       L0992     ; no, try again
@@ -2400,20 +2275,14 @@ L09FC               ora       ,s        ; merge with directory bits
                     ora       #DIR.     ; set directory bit
                     anda      FD.ATT,u  ; keep only bits we want from attributes
                     cmpa      ,s        ; can he access it?
-                  IFEQ    Level-1
-                    beq       L0A15
-                  ELSE
                     beq       L0A15     ; yes, check directory bits
-                  ENDC
                     ldb       #E$FNA    ; get error code
 L0A0C               leas      $02,s     ; purge attributes from stack
                     coma                ; set carry
                     puls      pc,x      ; restore & return
 
-                  IFEQ    Level-1
 
 ; TODO(strick): NOT REACHED!?  L0A11 not used in L1!?
-                  ENDC
 L0A11               ldb       #E$Share  ; get shareable file error
                     bra       L0A0C     ; return
 
@@ -2521,7 +2390,6 @@ L0AC8               stx       PE.NxFil,u ; save conflicting extension as next
 L0ACA               sty       PE.Confl,y
                     puls      pc,u,y,x,b,a
 
-                  IFGT    Level-1
 L0ACF               lda       #(EofLock!FileLock!RcdLock) ; get all types of lockout flags
 L0AD1               pshs      u,y,x,b,a
                     bita      PE.Lock,y ; anything locked?
@@ -2543,19 +2411,14 @@ L0AE2               ldx       PE.Wait,u
                     bra       L0AE2
 L0AFA               stu       PE.Wait,u
 L0AFD               puls      pc,u,y,x,b,a
-                  ENDC
 
 L0AFF               comb
                     ldb       #E$Share
 L0B02
-                  IFGT    Level-1
                     pshs      y,b,cc
                     ldy       PD.Exten,y
                     bsr       L0ACF
                     puls      pc,y,b,cc
-                  ELSE
-                    rts
-                  ENDC
 
 L0B0C               equ       *
                   IFNE    RBF6309
@@ -2649,12 +2512,8 @@ Mate3               puls      pc,b,a    ; restore D and return
                     ldu       <D.Proc   ; get current process pointer
                     lda       PE.Owner,x ; get owner ID of locked segment
 L0B30
-                  IFGT    Level-1
                     os9       F$GProcP  ; get a pointer to it
                     bcs       L0B42     ; no process left, skip ahead
-                  ELSE
-                    ldy       a,x
-                  ENDC
                     lda       P$DeadLk,y ; get dominant proc ID
                     beq       L0B42     ; none, skip ahead
                     cmpa      P$ID,u    ; same as current?
@@ -2721,7 +2580,6 @@ L0B9F
                     lbeq      L0B02
 L0BAA               bsr       L0BC2
                     lbcs      L0AFF
-                  IFGT    Level-1
                     pshs      u,y,x
                     ldy       PD.Exten,y
                     lda       #$01
@@ -2730,10 +2588,6 @@ L0BAA               bsr       L0BC2
                     sta       PE.Lock,y
                     clrb
                     puls      pc,u,y,x
-                  ELSE
-                    clrb
-                    rts
-                  ENDC
                   ENDC
 
                   IFEQ    Level-1
@@ -2848,11 +2702,7 @@ L0C56               pshs      y,x,b,a
                     ldx       <D.PrcDBT
                     os9       F$Find64
                   ELSE
-                  IFGT    Level-1
                     os9       F$GProcP  ; get process descriptor pointer
-                  ELSE
-                    ldy       a,x
-                  ENDC
                   ENDC
                     clr       P$IOQP,y  ; clear its I/O queue previous pointer
 L0C6C               clrb
@@ -2906,11 +2756,10 @@ L0CC5               coma
                     puls      pc,u,x
 
 L0CC8               lbsr      L1098
-                  IFEQ    Level-1
                     bcs       L0CC5     ; error, return it
+                  IFEQ    Level-1
                     lbsr      SizeOut   ; give the other paths on the file the new size
                   ELSE
-                    bcs       L0CC5
                     bsr       L0CDF
                   ENDC
                     puls      pc,u,x
@@ -3694,20 +3543,15 @@ RdFlDscr
                     bne       L10B0     ; yes, return no error
                     lbsr      FlushSectorBuffer ; flush any sector here
                     bcs       L10B1     ; error, return
-                  IFEQ    Level-1
                   IFNE    RBF6309
                     oim       #FDBUF,PD.SMF,y
                   ELSE
-* TODO(strick): Level1 uses B, Level2 uses A, next 3 instructions.
+* Preserve each level's scratch register: Level 1 uses B, Level 2 uses A.
+                  IFEQ    Level-1
                     ldb       PD.SMF,y
                     orb       #FDBUF
                     stb       PD.SMF,y
-                  ENDC
                   ELSE
-                  IFNE    RBF6309
-                    oim       #FDBUF,PD.SMF,y
-                  ELSE
-* TODO(strick): Level1 uses B, Level2 uses A, next 3 instructions.
                     lda       PD.SMF,y
                     ora       #FDBUF
                     sta       PD.SMF,y
