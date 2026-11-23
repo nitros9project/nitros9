@@ -105,9 +105,9 @@ jobs:
       uses: ./.github/actions/setup-tools
 
     - name: Install MAME and virtual display
+      timeout-minutes: 10
       run: |
-        sudo apt-get update
-        sudo apt-get install -y mame xvfb xauth
+        bash scripts/setup-ci-mame.sh
         echo "/usr/games" >> "$GITHUB_PATH"
 
     - name: Cache ROM archives
