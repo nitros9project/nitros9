@@ -496,7 +496,7 @@ end)
         command = [args.mame, 'coco3', '-rompath', args.rompath, '-skip_gameinfo',
                    '-cfg_directory', str(cfg), '-nvram_directory', str(root/'nvram'),
                    '-snapshot_directory', str(root/'snap'), '-ram', '512K',
-                   '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525qd',
+                   '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525dd',
                    '-seconds_to_run', str(args.seconds), '-flop1', str(args.disk.resolve()), '-autoboot_delay', '3', '-autoboot_script', str(lua)]
         if not args.interactive:
             command += ['-video', 'none', '-sound', 'none']

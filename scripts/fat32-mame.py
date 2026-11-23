@@ -45,7 +45,7 @@ def main():
         (ROOT/'scripts/fat32-mame.lua').read_text())
     command=[args.mame,'coco3','-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
         '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
-        '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525qd','-flop1',str(disk),'-hard1',str(media),
+        '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-hard1',str(media),
         '-seconds_to_run',str(args.seconds),'-autoboot_delay','3','-autoboot_script',str(lua),
         '-video','none','-sound','none','-nothrottle']
     if args.video:

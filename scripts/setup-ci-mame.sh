@@ -5,6 +5,12 @@ scratch=$(mktemp -d)
 trap 'sudo rm -rf "$scratch"' EXIT
 chmod 755 "$scratch"
 mkdir -p "$scratch/lists/partial"
+if (($#)); then
+    packages=("$@")
+else
+    packages=(build-essential pkg-config python3 git libsdl2-dev libsdl2-ttf-dev
+        libfontconfig-dev libxi-dev libxinerama-dev libgl1-mesa-dev xvfb xauth dosfstools)
+fi
 
 # Isolate both sources and indexes. A failed update must not silently reuse
 # stale indexes from the runner's original repositories.
@@ -27,8 +33,7 @@ deb [signed-by=/usr/share/keyrings/ubuntu-archive-keyring.gpg] $mirror noble-sec
 EOF
     if sudo timeout 90 apt-get "${apt_options[@]}" update &&
        sudo timeout 180 apt-get "${apt_options[@]}" install -y \
-           build-essential pkg-config python3 git libsdl2-dev libsdl2-ttf-dev \
-           libfontconfig-dev libxi-dev libxinerama-dev libgl1-mesa-dev xvfb xauth; then
+           "${packages[@]}"; then
         exit 0
     fi
     echo "MAME dependency installation failed using $mirror; trying the next mirror." >&2

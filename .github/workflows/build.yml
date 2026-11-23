@@ -1,6 +1,9 @@
 name: Build
 
 on:
+  schedule:
+    # GitHub schedules use UTC; run the default branch (main) nightly.
+    - cron: '17 9 * * *'
   push:
     branches: ['**']
   workflow_dispatch:
@@ -10,7 +13,7 @@ on:
         required: true
         default: full
         type: choice
-        options: [quick, full, mame, all]
+        options: [quick, full, mame, filesystems, all]
       game:
         description: Game to boot with the MAME suite
         required: true
@@ -51,7 +54,7 @@ jobs:
 
   build:
     name: Full build
-    if: github.event_name == 'workflow_dispatch' && (inputs.suite == 'full' || inputs.suite == 'all')
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'full' || inputs.suite == 'all'))
     needs: quick
     runs-on: ubuntu-24.04
     timeout-minutes: 30
@@ -78,10 +81,22 @@ jobs:
     - name: Build NitrOS-9
       run: bash .github/workflows/nitros9.sh
 
+  prepare-mame:
+    name: Prepare pinned MAME
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: quick
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Build and cache pinned MAME once for all emulator jobs
+      uses: ./.github/actions/setup-mame
+
   mame-smoke:
     name: MAME smoke tests
-    if: github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'all')
-    needs: quick
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'all'))
+    needs: [quick, prepare-mame]
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
@@ -104,67 +119,12 @@ jobs:
     - name: Set up tools
       uses: ./.github/actions/setup-tools
 
-    - name: Install MAME build dependencies and virtual display
-      timeout-minutes: 10
-      run: |
-        bash scripts/setup-ci-mame.sh
-        echo "$RUNNER_TEMP/nitros9-mame/bin" >> "$GITHUB_PATH"
+    - name: Set up pinned MAME
+      uses: ./.github/actions/setup-mame
 
-    - name: Restore pinned MAME executable
-      id: mame-cache
-      uses: actions/cache/restore@v5
-      with:
-        path: ${{ runner.temp }}/nitros9-mame
-        key: mame-0289-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-ci-mame.sh', 'scripts/setup-ci-mame.sh') }}
-
-    - name: Build MAME 0.289 CoCo drivers
-      if: steps.mame-cache.outputs.cache-hit != 'true'
-      timeout-minutes: 30
-      run: bash scripts/build-ci-mame.sh "$RUNNER_TEMP/nitros9-mame"
-
-    - name: Verify pinned MAME version
-      run: |
-        mame -version | tee "$RUNNER_TEMP/mame-version.txt"
-        grep -Eq '^0\.289([[:space:]]|$)' "$RUNNER_TEMP/mame-version.txt"
-
-    - name: Save pinned MAME executable
-      if: steps.mame-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v5
-      with:
-        path: ${{ runner.temp }}/nitros9-mame
-        key: ${{ steps.mame-cache.outputs.cache-primary-key }}
-
-    - name: Cache ROM archives
-      id: rom-cache
-      uses: actions/cache/restore@v5
-      with:
-        path: ${{ runner.temp }}/roms
-        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
-
-    - name: Download and verify ROM archives
+    - name: Set up verified ROMs
       id: roms
-      run: |
-        mkdir -p "$RUNNER_TEMP/roms"
-        cd "$RUNNER_TEMP/roms"
-        for archive in coco3 coco3h coco_fdc; do
-          if [ ! -s "$archive.zip" ]; then
-            curl --ipv4 --fail --location --retry 3 --retry-all-errors \
-              --connect-timeout 10 --max-time 60 \
-              "https://colorcomputerarchive.com/repo/ROMs/MAME-MESS/$archive.zip" -o "$archive.zip"
-          fi
-        done
-        sha256sum --check <<'HASHES'
-        a7e35287874ca75f119ae1aeb565eb5edf4049f3fa733a68c4142b58f2d17c42  coco3.zip
-        04b1c352aa16eada6889b80d07d8625bdc7d3d79c77dd229eafb10b878d90c91  coco3h.zip
-        d1607d1478123b61f0debbc835bb8497e236872cde406978141beb1c9c729efa  coco_fdc.zip
-        HASHES
-
-    - name: Save verified ROM archives
-      if: steps.rom-cache.outputs.cache-hit != 'true'
-      uses: actions/cache/save@v5
-      with:
-        path: ${{ runner.temp }}/roms
-        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
+      uses: ./.github/actions/setup-mame-roms
 
     - name: Boot 6809 floppy
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6809 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6809"
@@ -175,7 +135,7 @@ jobs:
 
     - name: Boot selected game on both CPUs
       env:
-        GAME_TO_TEST: ${{ inputs.game }}
+        GAME_TO_TEST: ${{ inputs.game || 'rogue' }}
       run: |
         for cpu in 6809 6309; do
           xvfb-run -a make -C recipes/coco3/games GAME="$GAME_TO_TEST" CPU="$cpu" \
@@ -201,4 +161,83 @@ jobs:
         name: mame-boot-results
         path: ${{ runner.temp }}/mame-results
         retention-days: 7
+        if-no-files-found: ignore
+
+  filesystem-cpu:
+    name: Filesystem CPU regressions
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: quick
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
+    - name: Set up filesystem test Python
+      uses: ./.github/actions/setup-filesystem-tests
+    - name: Install independent FAT checker
+      run: bash scripts/setup-ci-mame.sh dosfstools
+    - name: Run all assembled filesystem regressions and seeded stress tests
+      run: bash scripts/ci-filesystems.sh "$RUNNER_TEMP/filesystem-cpu"
+    - name: Upload CPU regression diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: filesystem-cpu-results
+        path: ${{ runner.temp }}/filesystem-cpu
+        retention-days: 14
+        if-no-files-found: ignore
+
+  filesystem-mame:
+    name: Filesystem integration (${{ matrix.suite }})
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: [quick, prepare-mame]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Checkout NitrOS-9 languages
+      uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-languages
+        path: nitros9-languages
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
+    - name: Set up filesystem test Python
+      uses: ./.github/actions/setup-filesystem-tests
+    - name: Set up pinned MAME
+      uses: ./.github/actions/setup-mame
+    - name: Set up verified ROMs
+      uses: ./.github/actions/setup-mame-roms
+    - name: Run existing filesystem integration suite
+      env:
+        FILESYSTEM_SUITE: ${{ matrix.suite }}
+        MAME_ROMPATH: ${{ runner.temp }}/roms
+      run: |
+        set -o pipefail
+        mkdir -p "$RUNNER_TEMP/filesystem-integration"
+        xvfb-run -a bash scripts/ci-filesystems-mame.sh "$FILESYSTEM_SUITE" \
+          2>&1 | tee "$RUNNER_TEMP/filesystem-integration/run.log"
+    - name: Upload filesystem integration diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: filesystem-${{ matrix.suite }}-results
+        include-hidden-files: true
+        path: |
+          ${{ runner.temp }}/filesystem-integration/
+          recipes/coco3/pcf_write_mame_test/.fat-root/
+          recipes/coco3/pcf_write_mame_test/.random-cpu/
+          recipes/coco3/fat_root_mame_test/.fat-root/
+          recipes/coco3/fat_mame_test/.fat-test/
+          recipes/coco3/fat_boot_mame_test/.fat-test/
+          recipes/coco3/rbf_mame_test/.rbf-test/
+          recipes/coco3/rfm_mame_test/.rfm-test/
+        retention-days: 14
         if-no-files-found: ignore
