@@ -83,7 +83,7 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'all')
     needs: quick
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -104,15 +104,39 @@ jobs:
     - name: Set up tools
       uses: ./.github/actions/setup-tools
 
-    - name: Install MAME and virtual display
+    - name: Install MAME build dependencies and virtual display
       timeout-minutes: 10
       run: |
         bash scripts/setup-ci-mame.sh
-        echo "/usr/games" >> "$GITHUB_PATH"
+        echo "$RUNNER_TEMP/nitros9-mame/bin" >> "$GITHUB_PATH"
+
+    - name: Restore pinned MAME executable
+      id: mame-cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ runner.temp }}/nitros9-mame
+        key: mame-0289-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-ci-mame.sh', 'scripts/setup-ci-mame.sh') }}
+
+    - name: Build MAME 0.289 CoCo drivers
+      if: steps.mame-cache.outputs.cache-hit != 'true'
+      timeout-minutes: 30
+      run: bash scripts/build-ci-mame.sh "$RUNNER_TEMP/nitros9-mame"
+
+    - name: Verify pinned MAME version
+      run: |
+        mame -version | tee "$RUNNER_TEMP/mame-version.txt"
+        grep -Eq '^0\.289([[:space:]]|$)' "$RUNNER_TEMP/mame-version.txt"
+
+    - name: Save pinned MAME executable
+      if: steps.mame-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/nitros9-mame
+        key: ${{ steps.mame-cache.outputs.cache-primary-key }}
 
     - name: Cache ROM archives
       id: rom-cache
-      uses: actions/cache@v5
+      uses: actions/cache/restore@v5
       with:
         path: ${{ runner.temp }}/roms
         key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
@@ -134,6 +158,13 @@ jobs:
         04b1c352aa16eada6889b80d07d8625bdc7d3d79c77dd229eafb10b878d90c91  coco3h.zip
         d1607d1478123b61f0debbc835bb8497e236872cde406978141beb1c9c729efa  coco_fdc.zip
         HASHES
+
+    - name: Save verified ROM archives
+      if: steps.rom-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/roms
+        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
 
     - name: Boot 6809 floppy
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6809 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6809"
