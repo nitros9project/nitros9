@@ -208,19 +208,29 @@ when started manually; pushes and pull requests run the existing build checks.
 From GitHub Actions, select **Build → Run workflow**, or use:
 
 ```sh
-gh workflow run build.yml --ref main
+gh workflow run build.yml --ref main -f suite=mame -f game=rogue
 gh run list --workflow build.yml
 gh run watch RUN_ID
 ```
 
-The job installs Ubuntu's MAME package and Xvfb, downloads checksum-verified
-ROM archives from the Color Computer Archive, and boots freshly built 6809
-and 6309 floppy images using `coco3` and `coco3h`. Each guest must write its
+Use `suite=all` to run the full build along with the smoke tests.
+
+The job builds the CoCo drivers from the pinned official MAME 0.289 release
+and caches the executable and Lua plugins. It verifies the version on every
+run. The first run needs extra time to compile MAME. Build dependencies and
+Xvfb are installed from Ubuntu archive mirrors with bounded timeouts and a
+fallback mirror. Checksum-verified ROM archives from the Color Computer
+Archive are cached separately.
+
+The tests boot freshly built 40-track 6809 and 6309 floppy images using
+`coco3` and `coco3h` with `525dd` drives. Each guest must write its
 expected marker file through the OS-9 shell to pass. This exercises boot,
 shell execution, and floppy writes; it does not cover the full OS command set.
 The startup used for testing omits the interactive time prompt.
 
-The job has a 20-minute limit, with each emulator invocation limited to three
-wall-clock minutes and 90 emulated seconds. The `mame-boot-results` artifact
-contains build logs, ROM audits, emulator version/output, screenshots, and test
-disks, retained for seven days. ROM archives are not uploaded.
+The job has a 45-minute limit, including a 30-minute MAME compilation limit.
+Each system boot invocation is limited to three wall-clock minutes and 90
+emulated seconds. The selected game is also tested on both CPUs.
+The `mame-boot-results` artifact contains build logs, guest console output,
+CPU checkpoints, ROM audits, emulator version/output, screenshots, and test
+disks, retained for seven days. ROM archives are not uploaded as artifacts.
