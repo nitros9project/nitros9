@@ -205,3 +205,11 @@ the kernel tables and system memory map. It exercises signature/layout/version,
 FAT-count and OS9BOOT attribute failures; reserved/high clusters; overflow in
 reserved/FAT/data addresses and cluster scaling; and the final VHD record versus
 an attempted wrapped read. Both CPU builds must remain exactly 464 bytes.
+
+The `fat_mame_test` and `fat_boot_mame_test` suites also execute their commands
+from a disk-resident startup script. Their artifacts include console output,
+VHD read/write traces, and a completion marker. The FAT boot case removes the
+floppy OS9Boot and clears its boot pointer before starting MAME. Both verify
+file contents, fragmented reads, directory metadata, and an unchanged FAT image.
+`test-sysgo-startup.py` checks resident-module mapping release and dynamic-module
+reclamation on MC6809, plus SysGo's descriptor-buffer allocation.
