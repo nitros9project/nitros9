@@ -2,7 +2,9 @@
 """Execute Level 1 F$SRqMem and its bitmap allocator on an external usim CPU.
 
 Requires LWASM, a C++20 compiler, and a usim checkout (--usim-dir). The CPU
-dependency is not downloaded or vendored. --baseline REF tests archived sources.
+dependency is not downloaded or vendored. Tested with raybellis/usim commit
+2b454536ca8c4156c989b5ebcac718a8cc8c5fb7 (mc6809.h, read/write overrides).
+--baseline REF tests archived sources.
 Generated programs and the minimal RAM test board stay in a temporary directory.
 """
 import argparse
@@ -71,9 +73,9 @@ def program(size, full, release_at=None):
         lbne Fail
 '''
     else:
-        check = '''
+        check = f'''
         lbcc Fail
-        cmpb #207
+        cmpb #{210 if size == 0 else 207}
         lbne Fail
         ldd R$U,u
         cmpd #$4567

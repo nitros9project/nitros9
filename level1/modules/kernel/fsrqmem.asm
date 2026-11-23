@@ -10,12 +10,14 @@
 ;;;         U = The address of the newly allocated area.
 ;;;        CC = Carry flag clear to indicate success.
 ;;;
-;;; Error:  B = A non-zero error code.
+;;; Error:  B = E$BPAddr for a zero-byte request; E$MemFul if the size exceeds
+;;;             $FF00 or no contiguous area is available.
 ;;;        CC = Carry flag set to indicate error.
 ;;;
 ;;; F$SRqMem allocates contiguous memory from the system in 256 byte pages. There are 256 of these 256 byte pages
 ;;; in the entire address space. It returns memory from the top of the system RAM map down, and rounds the size
-;;; request to the next 256 byte page boundary.
+;;; request to the next 256 byte page boundary. Requests of zero or above $FF00 are refused.
+;;; A zero allocation has no valid area to return; F$SRtMem instead treats zero as a no-op.
 
 **************************************************
 * F$SRqMem - Level 1 implementation
@@ -27,7 +29,7 @@ FSRqMem             ldd       R$D,u     ; get memory allocation size requested f
                     bcs       ex@       ; reject rounding overflow before clearing carry
                     clrb                ; just keep # of pages (e.g. $2FE = $200)
                     tsta                ; a zero page count is not valid for AllocBit
-                    beq       ex@       ; reject a zero-byte request before touching the bitmap
+                    beq       SRqBadSize ; reject a zero-byte request before touching the bitmap
                     std       R$D,u     ; save rounded version back to caller's D
 * Start searching from the top of free memory allocation bitmap down, searching for 'D' contiguous bits
                     ldx       <D.FMBM+2 ; get the pointer to the end of the free memory allocation bitmap
@@ -76,6 +78,10 @@ okex                clra                ; clear carry
 ex@                 comb                ; set carry
                     ldb       #E$MemFul ; indicate memory is full
                     rts                 ; return to the caller
+
+SRqBadSize          comb                ; set carry for an invalid allocation size
+                    ldb       #E$BPAddr ; zero bytes cannot identify an allocated area
+                    rts
 
 ;;; F$SRtMem
 ;;;
