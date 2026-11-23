@@ -26,3 +26,7 @@ MAME_ROMPATH ?= $(HOME)/Documents/Resources/Computing/mame/roms
 check: $(DSKIMAGE)
 	$(PYTHON) $(NITROS9DIR)/scripts/module-group-mame.py --recipe $(CURDIR) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)"
 .PHONY: check
+
+# Manual diagnostic for an original Tandy Level Two disk; not run at boot.
+$(MODDIR)/dunlink: tandy-double-unlink.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@
