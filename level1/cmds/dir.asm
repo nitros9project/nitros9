@@ -167,7 +167,7 @@ L01A6               leax      >NHeader,pcr
                     ldy       #NHeaderL
 L01AE               lda       #$01
                     os9       I$Write
-L01B3               lbra      L0253     ; continue unconditionally L0253
+L01B3               bra       L0253     ; continue unconditionally L0253
 L01C5               tst       <extended ; test <extended
                     bne       L01E8
                     leay      <dent,u
@@ -212,8 +212,8 @@ L0231               lbsr      L030B
                     lbsr      PutStr
                     lbsr      CRnWrite
                     lbsr      L02D3
-                    lbsr      PutSpace  ; call helper PutSpace
-                    lbsr      PutSpace  ; call helper PutSpace
+                    bsr       PutSpace  ; call helper PutSpace
+                    bsr       PutSpace  ; call helper PutSpace
                     bsr       L026E
                     bsr       L0280
                     lbsr      CRnWrite
@@ -243,7 +243,7 @@ L0280               ldd       <dent+RD.Bytes ; load D from <dent+RD.Bytes
                     bsr       L0298
                     tfr       b,a
                     bsr       L029A
-                    lbsr      PutSpace  ; call helper PutSpace
+                    bsr       PutSpace  ; call helper PutSpace
                     ldd       <dent+RD.Bytes+2 ; load D from <dent+RD.Bytes+2
                     bra       L0274
 L028E               pshs      a
@@ -318,7 +318,7 @@ L030B               leax      <dent+RD.Modified,u ; point X at <dent+RD.Modified
 L030E               bsr       L0338
                     bsr       L0324
                     bsr       L0324
-                    lbsr      PutSpace  ; call helper PutSpace
+                    bsr       PutSpace  ; call helper PutSpace
                     bsr       Byte2ASC
                     tst       <narrow
                     beq       L0320
@@ -399,7 +399,7 @@ ItIsX               lda       #EXEC.
 FixCmdLn            lda       #C$SPAC
                     sta       -1,x
                     cmpb      #'0
-                    lblt      ChkDash
+                    blt       ChkDash
                     bra       GetDash
 
 SkipSpcs            lda       ,x+

@@ -13,6 +13,12 @@
                     nam       XMode/TMode
                     ttl       SCF device/path descriptor utility
 
+* TMode's smaller option table and code keep several branches in short range.
+* Let LWASM select their widths without changing the larger XMode build.
+                    ifne      TMODE
+                    pragma    autobranchlength
+                    endc
+
 DOHELP              set       0
 
                     ifp1
