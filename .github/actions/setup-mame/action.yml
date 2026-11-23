@@ -33,4 +33,3 @@ runs:
       with:
         path: ${{ runner.temp }}/nitros9-mame
         key: ${{ steps.mame-cache.outputs.cache-primary-key }}
-
