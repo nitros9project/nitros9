@@ -118,7 +118,7 @@ FUnlinkModuleSame   cmpx      MD$MPtr,u ; is module pointer the same?
 *   Fall through- safe, destroys D immediately
 *   L01B5 - Seems to be safe
                     ldd       MD$Link,u ; get module link count
-                    beq       FUnlinkTarget ; it's zero, go unlink it
+                    lbeq      FUnlinkErrors ; no reference to release; leave process mappings alone
                   IFNE    H6309   ; begin conditional assembly for H6309
                     decd      decrement link count
                   ELSE
