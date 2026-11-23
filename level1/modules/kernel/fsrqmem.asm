@@ -25,11 +25,10 @@
 * Reject zero and sizes above $FF00: rounding those to zero pages would pass
 * an invalid zero count to AllocBit and overwrite memory beyond the bitmap.
 FSRqMem             ldd       R$D,u     ; get memory allocation size requested from the caller's D
+                    beq       SRqBadSize ; zero bytes cannot identify an allocated area
                     addd      #$00FF    ; round it up to nearest 256 byte page (e.g. $1FF = $2FE)
                     bcs       ex@       ; reject rounding overflow before clearing carry
                     clrb                ; just keep # of pages (e.g. $2FE = $200)
-                    tsta                ; a zero page count is not valid for AllocBit
-                    beq       SRqBadSize ; reject a zero-byte request before touching the bitmap
                     std       R$D,u     ; save rounded version back to caller's D
 * Start searching from the top of free memory allocation bitmap down, searching for 'D' contiguous bits
                     ldx       <D.FMBM+2 ; get the pointer to the end of the free memory allocation bitmap
@@ -79,8 +78,8 @@ ex@                 comb                ; set carry
                     ldb       #E$MemFul ; indicate memory is full
                     rts                 ; return to the caller
 
-SRqBadSize          comb                ; set carry for an invalid allocation size
-                    ldb       #E$BPAddr ; zero bytes cannot identify an allocated area
+SRqBadSize          comb                ; shared invalid allocation/return error
+                    ldb       #E$BPAddr ; invalid size, alignment or extent
                     rts
 
 ;;; F$SRtMem
@@ -102,20 +101,17 @@ FSRtMem             ldd       R$U,u     ; a null address is always ignored
                     ldd       R$D,u     ; get the memory allocation size requested from the caller's D
                     beq       okex      ; zero bytes must not reach DelBit with a zero count
                     addd      #$00FF    ; round it up to nearest 256 byte page (e.g. $1FF = $2FE)
-                    bcs       badaddr@  ; reject rounding overflow before clearing carry
+                    bcs       SRqBadSize ; reject rounding overflow before clearing carry
                     tfr       a,b       ; put MSB into B
                     clra                ; now D reflects number of 256 byte pages to return
                     tfr       d,y       ; put the 16 bit page count into Y
                     addb      R$U,u     ; add starting page to page count
                     bcc       inrange@  ; end below page 256 is representable
-                    bne       badaddr@  ; carry with nonzero result extends beyond page 256
+                    bne       SRqBadSize ; carry with nonzero result extends beyond page 256
 inrange@            equ       *         ; an end exactly at $10000 is also valid
                     ldd       R$U,u     ; get the address of memory to free from the caller's U
                     tstb                ; check for B = 0 (it should!)
-                    beq       returnmem@ ; it does... return it to the system
-badaddr@            comb                ; reject an unaligned address or invalid extent
-                    ldb       #E$BPAddr ; the error is bad page address
-                    rts                 ; return to the caller
+                    bne       SRqBadSize ; reject an unaligned address
 returnmem@          exg       a,b       ; swap A/B
                     ldx       <D.FMBM   ; get pointer to free memory bitmap
                     bra       DelBit    ; call into F$DelBit to delete bits

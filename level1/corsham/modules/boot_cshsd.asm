@@ -85,7 +85,10 @@ HWTerm              clrb                          no error
                     rts
 
 ***************************************************************************
+* The compact Corsham booter keeps these hardware calls within BSR range.
+                    pragma    autobranchlength
                     use       boot_common.asm
+                    pragma    noautobranchlength
 ***************************************************************************
 
 *

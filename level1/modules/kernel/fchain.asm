@@ -47,11 +47,9 @@ chainerr@           pshs      b         ; save off B for now
                     stb       P$Prior,x ; set priority
                     comb                ; set carry
                     puls      pc,b      ; return error
-DoChain             pshs      u         ; save off caller's SP
-                    ldx       <D.Proc   ; get current process descriptor
-                    ldu       <P$PModul,x ; get the old primary module
-                    pshs      u         ; save it until the new module is in place
-                    ldu       2,s       ; get saved caller's SP
+DoChain             ldx       <D.Proc   ; get current process descriptor
+                    ldx       <P$PModul,x ; get the old primary module without changing U
+                    pshs      u,x       ; save caller's SP and old module (X is on top)
                     bsr       SetupPrc  ; set up the new primary module
                     puls      u         ; recover the old primary module
                     bcs       failed@   ; branch if error
