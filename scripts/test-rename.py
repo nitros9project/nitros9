@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Execute SS.Rename in both assembled RBFs with a deterministic sector peer.
+"""Execute SS.Rename in both levels of the shared RBF with a deterministic sector peer.
 Requires MC6809 and lwasm. Disk I/O and lock scheduling are intercepted; name
 validation, permissions, scanning, updates, and cleanup execute as real 6809.
 """
@@ -167,6 +167,6 @@ if __name__=='__main__':
     with tempfile.TemporaryDirectory() as folder:
         tmp=Path(folder)
         for level in (1,2):
-            b,s=assemble(tmp,level,f'level{level}/modules/rbf.asm');tests(b,s,level)
+            b,s=assemble(tmp,level,'level1/modules/rbf.asm');tests(b,s,level)
 
         b,s=assemble(tmp,1,'level1/cmds/rename.asm');command_tests(b,s)
