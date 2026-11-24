@@ -27,7 +27,7 @@
 FLink               pshs      u         ; save caller regs
                     ldd       R$A,u     ; get desired type/language byte
                     ldx       R$X,u     ; get pointer to desired module name to link to
-                    lbsr      FindModule ; go find the module
+                    bsr       FindModule ; go find the module
                     bcc       ok@       ; branch if found
                     ldb       #E$MNF    ; ...else Module Not Found error
                     bra       ex@       ; and return to caller

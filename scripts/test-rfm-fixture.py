@@ -16,6 +16,15 @@ class Input:
     def recv(self, count):
         return self.data.read(count)
 
+class Wire:
+    def __init__(self, packet):
+        self.input = io.BytesIO(packet)
+        self.output = bytearray()
+    def recv(self, count):
+        return self.input.read(count)
+    def sendall(self, data):
+        self.output.extend(data)
+
 class Paths(unittest.TestCase):
     def test_dot_spellings_and_separate_contexts(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -77,6 +86,51 @@ class Paths(unittest.TestCase):
             self.assertEqual(records[32], 0xae)
             self.assertEqual(peer.nodes[int.from_bytes(records[29:32], 'big')], root)
             self.assertEqual(peer.nodes[int.from_bytes(records[61:64], 'big')], child)
+
+    def test_readdir_handshake_records_metadata_eof_and_following_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            (root/'a.txt').write_bytes(b'hello')
+            (root/'bdir').mkdir()
+            peer = rfm.Fixture(root, io.StringIO())
+            records = peer.directory(root)
+            stream = io.BytesIO(records[:64] + bytes(32) + records[64:])
+            stream.name = str(root)
+            peer.paths[7] = stream
+            get = b'\xd6\x0b\x07\x2e'
+            wire = Wire(get + b'\x00\x20' + get + b'\x00\x2d' +
+                        get + b'\x00\x20' + get + b'\x00\x2d' +
+                        b'\xd6\x0b\x07\x05\xd6\x0d\x07')
+            expected = (b'\x00\x00' + records[64:96] +
+                        b'\x00\x00' + records[96:128] + peer.descriptor(root/'bdir')[:13] +
+                        b'\x00\xd3\x00\xd3' + (160).to_bytes(4, 'big') + b'\x00')
+            peer.handle(wire)
+            self.assertEqual(wire.output, expected)
+            self.assertFalse(peer.errors)
+
+    def test_readdir_bad_size_preserves_cursor_and_protocol(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            peer = rfm.Fixture(root, io.StringIO())
+            stream = io.BytesIO(peer.directory(root))
+            stream.name = str(root)
+            peer.paths[7] = stream
+            wire = Wire(b'\xd6\x0b\x07\x2e\x00\x21\xd6\x0b\x07\x05')
+            peer.handle(wire)
+            self.assertEqual(wire.output, b'\x00\xcb' + bytes(4))
+            self.assertFalse(peer.errors)
+
+    def test_readdir_file_rejection_does_not_consume_next_request(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory).resolve()
+            file = root/'file'
+            file.write_bytes(b'hello')
+            peer = rfm.Fixture(root, io.StringIO())
+            peer.paths[7] = file.open('rb')
+            wire = Wire(b'\xd6\x0b\x07\x2e\xd6\x0b\x07\x02\xd6\x0d\x07')
+            peer.handle(wire)
+            self.assertEqual(wire.output, b'\xcb' + (5).to_bytes(4, 'big') + b'\x00')
+            self.assertFalse(peer.errors)
 
 if __name__ == '__main__':
     unittest.main()

@@ -20,7 +20,7 @@
 tylg set Prgrm+Objct
 atrv set ReEnt+rev
 rev set $00
-edition set 7
+edition             set       8         ; set assembly value
 
  mod eom,name,tylg,atrv,start,size
 
@@ -59,7 +59,7 @@ ScanSource lda ,x+
  cmpa #C$SPAC
  bhi ScanSource
 SourceEnd cmpa #C$CR
- lbeq bpnam
+ beq  bpnam
 SkipNew lda ,x
  cmpa #C$SPAC
  beq NextNew
@@ -69,14 +69,14 @@ NextNew leax 1,x
  bra SkipNew
 NewReady stx <nextparm
  pshs u
- lbsr PFNS
+ bsr  PFNS
  puls u
- lbcs Exit
+ bcs  Exit
  ldb <oldsiz
  cmpb #29
- lbhi bpnam
+ bhi  bpnam
  tstb
- lbeq bpnam
+ beq  bpnam
  leax packet,u
  ldb #60
 ClearPacket clr ,x+
@@ -85,11 +85,11 @@ ClearPacket clr ,x+
  ldx <oldnam
  leay packet,u
  ldb <oldsiz
- lbsr CopyName
+ bsr  CopyName
  ldx <nextparm
  leay packet+30,u
  ldb <newsiz+1
- lbsr CopyName
+ bsr  CopyName
  ldx <oldnam
  cmpx <sourceptr
  beq ParentReady
@@ -109,6 +109,8 @@ ParentReady ldx <parmptr
  os9 I$Close
  bcs CloseError
  puls b,cc
+                    bcs       Exit      ; branch on carry or error Exit
+ clrb                          Successful SetStt need not clear B
  bra Exit
 CloseError pshs b
  ldb 1,s

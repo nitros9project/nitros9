@@ -91,7 +91,7 @@ do.opts2 lbsr space
  bra do.opts2 else continue parsing for options
 
 do.file ldx <param
- lbsr space
+ bsr  space
 
  cmpa #C$CR CR?
  beq Exit exit if so

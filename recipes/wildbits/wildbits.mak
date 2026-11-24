@@ -421,9 +421,10 @@ $(addprefix $(BASIC09_L2_DIR)/,$(BASIC09_L2)) $(BASIC09_L2_HLP):
 endif
 
 ifeq ($(LEVEL),2)
-$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) | $(MODDIR)
-	$(MERGE) $^ > utilpak1
-	$(MOVE) utilpak1 $@
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) $(NITROS9DIR)/scripts/check-utilpak-size.py | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1_MODS)) >$@.tmp
+	python3 $(NITROS9DIR)/scripts/check-utilpak-size.py $@.tmp
+	$(MOVE) $@.tmp $@
 endif
 
 # Descriptor rules
@@ -597,3 +598,17 @@ clean:
 	-rm -rf $(OBJDIR) $(LIBDIR) $(MODDIR) $(CLEAN_DIRS)
 
 .PHONY: all clean libs FORCE
+
+# Experimental native-block ABI. Build explicitly; not included in boot lists.
+.PHONY: blkdrv-modules
+blkdrv-modules: $(MODDIR)/blkdrv $(MODDIR)/llwbsdblk $(MODDIR)/llmemblk
+$(MODDIR)/blkdrv $(MODDIR)/llwbsdblk $(MODDIR)/llmemblk: $(DEFSDIR)/blkdrv.d defsfile
+
+# Read-only FAT32, explicit opt-in descriptor. FAT_BASE/FAT_LENGTH are native LBAs.
+FAT_BASE ?= 0
+FAT_LENGTH ?= 0
+.PHONY: fat32-modules
+fat32-modules: blkdrv-modules $(MODDIR)/pcf $(MODDIR)/pc0
+$(MODDIR)/pcf: $(NITROS9DIR)/level1/modules/fatwrite.asm $(DEFSDIR)/blkdrv.d $(DEFSDIR)/pcf.d $(DEFSDIR)/readdir.d $(DEFSDIR)/rename-name.d defsfile
+$(MODDIR)/pc0: fatdesc.asm $(DEFSDIR)/blkdrv.d $(DEFSDIR)/pcf.d defsfile FORCE | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DFATBase=$(FAT_BASE) -DFATLength=$(FAT_LENGTH)

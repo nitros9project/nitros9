@@ -1,0 +1,37 @@
+name: Restore and verify CoCo MAME ROM archives
+description: Restore and verify CoCo MAME ROM archives
+runs:
+  using: composite
+  steps:
+    - name: Cache ROM archives
+      id: rom-cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ runner.temp }}/roms
+        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
+
+    - name: Download and verify ROM archives
+      id: roms
+      shell: bash
+      run: |
+        mkdir -p "$RUNNER_TEMP/roms"
+        cd "$RUNNER_TEMP/roms"
+        for archive in coco3 coco3h coco_fdc; do
+          if [ ! -s "$archive.zip" ]; then
+            curl --ipv4 --fail --location --retry 3 --retry-all-errors \
+              --connect-timeout 10 --max-time 60 \
+              "https://colorcomputerarchive.com/repo/ROMs/MAME-MESS/$archive.zip" -o "$archive.zip"
+          fi
+        done
+        sha256sum --check <<'HASHES'
+        a7e35287874ca75f119ae1aeb565eb5edf4049f3fa733a68c4142b58f2d17c42  coco3.zip
+        04b1c352aa16eada6889b80d07d8625bdc7d3d79c77dd229eafb10b878d90c91  coco3h.zip
+        d1607d1478123b61f0debbc835bb8497e236872cde406978141beb1c9c729efa  coco_fdc.zip
+        HASHES
+
+    - name: Save verified ROM archives
+      if: steps.rom-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/roms
+        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812

@@ -1,0 +1,35 @@
+name: Build or restore pinned MAME 0.289 for CoCo tests
+description: Build or restore pinned MAME 0.289 for CoCo tests
+runs:
+  using: composite
+  steps:
+    - name: Install MAME build dependencies and virtual display
+      shell: bash
+      run: |
+        bash scripts/setup-ci-mame.sh
+        echo "$RUNNER_TEMP/nitros9-mame/bin" >> "$GITHUB_PATH"
+
+    - name: Restore pinned MAME executable
+      id: mame-cache
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ runner.temp }}/nitros9-mame
+        key: mame-0289-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/build-ci-mame.sh', 'scripts/setup-ci-mame.sh') }}
+
+    - name: Build MAME 0.289 CoCo drivers
+      if: steps.mame-cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: timeout 1800 bash scripts/build-ci-mame.sh "$RUNNER_TEMP/nitros9-mame"
+
+    - name: Verify pinned MAME version
+      shell: bash
+      run: |
+        mame -version | tee "$RUNNER_TEMP/mame-version.txt"
+        grep -Eq '^0\.289([[:space:]]|$)' "$RUNNER_TEMP/mame-version.txt"
+
+    - name: Save pinned MAME executable
+      if: steps.mame-cache.outputs.cache-hit != 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: ${{ runner.temp }}/nitros9-mame
+        key: ${{ steps.mame-cache.outputs.cache-primary-key }}

@@ -1,49 +1,64 @@
 name: Build
 
 on:
+  schedule:
+    # GitHub schedules use UTC; run the default branch (main) nightly.
+    - cron: '17 9 * * *'
+  push:
+    branches: ['**']
   workflow_dispatch:
     inputs:
+      suite:
+        description: Additional tests (quick checks always run)
+        required: true
+        default: full
+        type: choice
+        options: [quick, full, mame, filesystems, all]
       game:
-        description: Game to boot (for example rogue, arcadepak, christmas86)
+        description: Game to boot with the MAME suite
         required: true
         default: rogue
         type: string
-  push:
-    branches:
-      - main
-      - '*'
-  pull_request:
-    branches:
-      - main
-      - '*'
-
-env:
-  # Path to the solution file relative to the root of the project.
-  SOLUTION_FILE_PATH: .
-  LANGUAGES: ${{ github.workspace }}/nitros9-languages
-  NITROS9_GAMES_DIR: ${{ github.workspace }}/nitros9-games
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
 
 permissions:
   contents: read
 
+# Superseded commits on a branch do not consume more runner time.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LANGUAGES: ${{ github.workspace }}/nitros9-languages
+  NITROS9_GAMES_DIR: ${{ github.workspace }}/nitros9-games
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: "true"
+
 defaults:
-    run:
-        shell: bash {0}
+  run:
+    shell: bash
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-
+  quick:
+    name: Quick checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     steps:
+    - name: Checkout
+      uses: actions/checkout@v5
 
-#
-# Prepare environment with necessary packages.
-# disabled for now, uncomment if need to install package
-#    - name: Setup Requirements
-#      run: |
-#        sudo apt-get install mingw-w64
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
 
+    - name: Test representative system modules and regression checks
+      run: bash scripts/ci-quick.sh
+
+  build:
+    name: Full build
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'full' || inputs.suite == 'all'))
+    needs: quick
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
     - name: Checkout
       uses: actions/checkout@v5
 
@@ -60,66 +75,30 @@ jobs:
         repository: nitros9project/nitros9-languages
         path: nitros9-languages
 
-#
-# Cache LwTools, if no cache key entry exists a new one will be created upon a successful build.
-# This will store the entries in 'path:' in a zip file, conveniently they all start with 'lw'
-#
-    - name: Cache LwTools
-      id: cache-lwtools
-      uses: actions/cache@v5
-      env:
-        cache-name: cache-lwtools
-      with:
-        path: /usr/local/bin/lw*
-        key: lwtools-4.24
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
 
-#
-# Fetch latest toolshed from the official repo.
-#
-    - name: Fetch Toolshed
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        mkdir -p toolshed
-        # Find the newest tag that starts with 'v' (ignoring DiskShed-*)
-        TOOLSHED_TAG=$(gh release list -R nitros9project/toolshed --limit 30 \
-          | awk '{print $1}' | grep -E '^v[0-9]' | head -n 1)
+    - name: Build NitrOS-9
+      run: bash .github/workflows/nitros9.sh
 
-        # Download the matching asset from that specific release
-        gh release download "$TOOLSHED_TAG" -R nitros9project/toolshed \
-          -p "toolshed-unix*.tgz" -D toolshed
-
-#
-# Unzip fetched toolshed binaries directly into /usr/local/bin
-#
-
-    - name: Install Toolshed
-      run: |
-        sudo tar xvf toolshed/toolshed-unix*.tgz --strip-components=1 -C /usr/local/bin
-
-#
-# If LwTools was cached last time, we can skip this step.
-# otherwise fetch it, build and install to /usr/local/bin.
-#
-    - if: ${{ steps.cache-lwtools.outputs.cache-hit != 'true' }}
-      name: Install Lwtools
-      run: |
-        sudo bash ./.github/workflows/lwtools.sh
-
-#
-# Trial build all nitros9 targets.
-#
-    - name: Build NitrOS9
-      run: |
-        sudo bash ./.github/workflows/nitros9.sh
-      
+  prepare-mame:
+    name: Prepare pinned MAME
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: quick
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Build and cache pinned MAME once for all emulator jobs
+      uses: ./.github/actions/setup-mame
 
   mame-smoke:
-    # Emulator testing is opt-in; ordinary pushes keep the build-only checks.
-    if: github.event_name == 'workflow_dispatch'
+    name: MAME smoke tests
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'mame' || inputs.suite == 'all'))
+    needs: [quick, prepare-mame]
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
-
+    timeout-minutes: 45
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -137,83 +116,26 @@ jobs:
         repository: nitros9project/nitros9-languages
         path: nitros9-languages
 
-#
-# Cache LwTools, if no cache key entry exists a new one will be created upon a successful build.
-# This will store the entries in 'path:' in a zip file, conveniently they all start with 'lw'
-#
-    - name: Cache LwTools
-      id: cache-lwtools
-      uses: actions/cache@v5
-      env:
-        cache-name: cache-lwtools
-      with:
-        path: /usr/local/bin/lw*
-        key: lwtools-4.24
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
 
-#
-# Fetch latest toolshed from the official repo.
-#
-    - name: Fetch Toolshed
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        mkdir -p toolshed
-        # Find the newest tag that starts with 'v' (ignoring DiskShed-*)
-        TOOLSHED_TAG=$(gh release list -R nitros9project/toolshed --limit 30 \
-          | awk '{print $1}' | grep -E '^v[0-9]' | head -n 1)
+    - name: Set up pinned MAME
+      uses: ./.github/actions/setup-mame
 
-        # Download the matching asset from that specific release
-        gh release download "$TOOLSHED_TAG" -R nitros9project/toolshed \
-          -p "toolshed-unix*.tgz" -D toolshed
-
-#
-# Unzip fetched toolshed binaries directly into /usr/local/bin
-#
-
-    - name: Install Toolshed
-      run: |
-        sudo tar xvf toolshed/toolshed-unix*.tgz --strip-components=1 -C /usr/local/bin
-
-#
-# If LwTools was cached last time, we can skip this step.
-# otherwise fetch it, build and install to /usr/local/bin.
-#
-    - if: ${{ steps.cache-lwtools.outputs.cache-hit != 'true' }}
-      name: Install Lwtools
-      run: |
-        sudo bash ./.github/workflows/lwtools.sh
-
-
-    - name: Install MAME and virtual display
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y mame xvfb xauth
-        echo "/usr/games" >> "$GITHUB_PATH"
-
-    - name: Download and verify ROM archives
-      run: |
-        mkdir -p "$RUNNER_TEMP/roms"
-        cd "$RUNNER_TEMP/roms"
-        for archive in coco3 coco3h coco_fdc; do
-          curl --fail --location --retry 3 --max-time 60 \
-            "https://colorcomputerarchive.com/repo/ROMs/MAME-MESS/$archive.zip" -o "$archive.zip"
-        done
-        sha256sum --check <<'HASHES'
-        a7e35287874ca75f119ae1aeb565eb5edf4049f3fa733a68c4142b58f2d17c42  coco3.zip
-        04b1c352aa16eada6889b80d07d8625bdc7d3d79c77dd229eafb10b878d90c91  coco3h.zip
-        d1607d1478123b61f0debbc835bb8497e236872cde406978141beb1c9c729efa  coco_fdc.zip
-        HASHES
+    - name: Set up verified ROMs
+      id: roms
+      uses: ./.github/actions/setup-mame-roms
 
     - name: Boot 6809 floppy
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6809 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6809"
 
     - name: Boot 6309 floppy
-      if: ${{ !cancelled() }}
+      if: ${{ !cancelled() && steps.roms.outcome == 'success' }}
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6309 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6309"
 
     - name: Boot selected game on both CPUs
       env:
-        GAME_TO_TEST: ${{ inputs.game }}
+        GAME_TO_TEST: ${{ inputs.game || 'rogue' }}
       run: |
         for cpu in 6809 6309; do
           xvfb-run -a make -C recipes/coco3/games GAME="$GAME_TO_TEST" CPU="$cpu" \
@@ -239,4 +161,84 @@ jobs:
         name: mame-boot-results
         path: ${{ runner.temp }}/mame-results
         retention-days: 7
+        if-no-files-found: ignore
+
+  filesystem-cpu:
+    name: Filesystem CPU regressions
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: quick
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
+    - name: Set up filesystem test Python
+      uses: ./.github/actions/setup-filesystem-tests
+    - name: Install independent FAT checker
+      run: bash scripts/setup-ci-mame.sh dosfstools
+    - name: Run all assembled filesystem regressions and seeded stress tests
+      run: bash scripts/ci-filesystems.sh "$RUNNER_TEMP/filesystem-cpu"
+    - name: Upload CPU regression diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: filesystem-cpu-results
+        path: ${{ runner.temp }}/filesystem-cpu
+        retention-days: 14
+        if-no-files-found: ignore
+
+  filesystem-mame:
+    name: Filesystem integration (${{ matrix.suite }})
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: [quick, prepare-mame]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq, module-groups]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Checkout NitrOS-9 languages
+      uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-languages
+        path: nitros9-languages
+    - name: Set up tools
+      uses: ./.github/actions/setup-tools
+    - name: Set up filesystem test Python
+      uses: ./.github/actions/setup-filesystem-tests
+    - name: Set up pinned MAME
+      uses: ./.github/actions/setup-mame
+    - name: Set up verified ROMs
+      uses: ./.github/actions/setup-mame-roms
+    - name: Run existing filesystem integration suite
+      env:
+        FILESYSTEM_SUITE: ${{ matrix.suite }}
+        MAME_ROMPATH: ${{ runner.temp }}/roms
+      run: |
+        set -o pipefail
+        mkdir -p "$RUNNER_TEMP/filesystem-integration"
+        xvfb-run -a bash scripts/ci-filesystems-mame.sh "$FILESYSTEM_SUITE" \
+          2>&1 | tee "$RUNNER_TEMP/filesystem-integration/run.log"
+    - name: Upload filesystem integration diagnostics
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: filesystem-${{ matrix.suite }}-results
+        include-hidden-files: true
+        path: |
+          ${{ runner.temp }}/filesystem-integration/
+          recipes/coco3/pcf_write_mame_test/.fat-root/
+          recipes/coco3/pcf_write_mame_test/.random-cpu/
+          recipes/coco3/fat_root_mame_test/.fat-root/
+          recipes/coco3/fat_mame_test/.fat-test/
+          recipes/coco3/fat_boot_mame_test/.fat-test/
+          recipes/coco3/rbf_mame_test/.rbf-test/
+          recipes/coco3/module_group_mame_test/.group-test/
+          recipes/coco3/rfm_mame_test/.rfm-test/
+        retention-days: 14
         if-no-files-found: ignore

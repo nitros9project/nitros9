@@ -1,0 +1,12 @@
+name: Set up filesystem test Python
+description: Install the pinned assembled-code and FAT32 reference test dependencies
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@v6
+      with:
+        python-version: '3.12'
+        cache: pip
+        cache-dependency-path: scripts/requirements-filesystems.txt
+    - shell: bash
+      run: python3 -m pip install -r scripts/requirements-filesystems.txt

@@ -207,6 +207,28 @@ class Fixture:
         fd[13:16] = fd[3:6]
         return fd
 
+    def read_directory_entry(self, stream, count):
+        """Return one portable record, advancing the legacy directory cursor."""
+        while True:
+            record = stream.read(32)
+            if not record:
+                return 211, b''  # E$EOF
+            if len(record) != 32:
+                raise ValueError('partial fixture directory record')
+            if not record[0]:
+                continue
+            name = bytearray()
+            for value in record[:29]:
+                name.append(value & 127)
+                if value & 128:
+                    break
+            if name in (b'.', b'..'):
+                continue
+            if count == 45:
+                node = self.nodes[int.from_bytes(record[29:32], 'big')]
+                record += self.descriptor(node)[:13]
+            return 0, record
+
     def handle(self, conn):
         try:
             while True:
@@ -323,6 +345,17 @@ class Fixture:
                         conn.sendall(self.descriptor(self.nodes[lsn]))
                     elif status == 6:
                         conn.sendall(bytes([int(stream.tell() >= self.stream_size(stream))]))
+                    elif status == 0x2e:  # SS.ReadDir: ready, count, status, record
+                        if not isinstance(stream, io.BytesIO):
+                            conn.sendall(bytes([203]))  # E$BMode, no count follows
+                            continue
+                        conn.sendall(b'\x00')
+                        count = int.from_bytes(self.receive(conn, 2), 'big')
+                        if count not in (32, 45):
+                            conn.sendall(bytes([203]))
+                            continue
+                        result, record = self.read_directory_entry(stream, count)
+                        conn.sendall(bytes([result]) + record)
                     else:
                         raise ValueError(f'fixture does not implement GetStat ${status:02x}')
                 elif op == 13:
@@ -496,7 +529,7 @@ end)
         command = [args.mame, 'coco3', '-rompath', args.rompath, '-skip_gameinfo',
                    '-cfg_directory', str(cfg), '-nvram_directory', str(root/'nvram'),
                    '-snapshot_directory', str(root/'snap'), '-ram', '512K',
-                   '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525qd',
+                   '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525dd',
                    '-seconds_to_run', str(args.seconds), '-flop1', str(args.disk.resolve()), '-autoboot_delay', '3', '-autoboot_script', str(lua)]
         if not args.interactive:
             command += ['-video', 'none', '-sound', 'none']

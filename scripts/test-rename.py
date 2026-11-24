@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Execute SS.Rename in both assembled RBFs with a deterministic sector peer.
+"""Execute SS.Rename in both levels of the shared RBF with a deterministic sector peer.
 Requires MC6809 and lwasm. Disk I/O and lock scheduling are intercepted; name
 validation, permissions, scanning, updates, and cleanup execute as real 6809.
 """
@@ -47,7 +47,7 @@ class RBF:
         s=self.s;c=self.c;self.m.load(DATA,packet or record('old','new'))
         self.w(REGS+s['R$X'],DATA);self.w(REGS+s['R$Y'],count);self.m.write_byte(REGS+s['R$B'],s['SS.Rename'])
         c.index_y.set(PD);c.user_stack_pointer.set(REGS);c.system_stack_pointer.set(0x7800);self.w(0x7800,0x1fff);c.program_counter.set(BASE+s['SetStat'])
-        traps={BASE+s[n]:n for n in ['RdFlDscr','L1237','L0957','L0942','L1205']}
+        traps={BASE+s[n]:n for n in ['RdFlDscr','FlushSectorBuffer','ReadDirectoryEntry','NextDirectoryEntry','L1205']}
         if self.level==2:traps.update({BASE+s[n]:n for n in ['L0B1B','L0ACF']})
         for _ in range(100000):
             pc=c.program_counter.value
@@ -56,12 +56,12 @@ class RBF:
             if name:
                 if name=='RdFlDscr':
                     self.fd[s['FD.SIZ']:s['FD.SIZ']+4]=len(self.disk).to_bytes(4,'big');self.m.load(BUF,self.fd);c.user_stack_pointer.set(BUF);self.result()
-                elif name=='L1237':self.m.write_byte(PD+s['PD.SMF'],0);self.result()
+                elif name=='FlushSectorBuffer':self.m.write_byte(PD+s['PD.SMF'],0);self.result()
                 elif name=='L0B1B':self.locked=not self.fail_lock;self.result(s['E$Lock'] if self.fail_lock else 0)
                 elif name=='L0ACF':self.locked=False;self.m.write_byte(EXT+s['PE.Lock'],0);self.result()
-                elif name in ('L0957','L0942'):
+                elif name in ('ReadDirectoryEntry','NextDirectoryEntry'):
                     if self.level==2:assert self.locked,'scan without directory lock'
-                    pos=self.pos()+(32 if name=='L0942' else 0);self.m.load(PD+s['PD.CP'],pos.to_bytes(4,'big'))
+                    pos=self.pos()+(32 if name=='NextDirectoryEntry' else 0);self.m.load(PD+s['PD.CP'],pos.to_bytes(4,'big'))
                     if self.fail_read:self.result(s['E$Read'])
                     elif pos>=len(self.disk):self.result(s['E$EOF'])
                     else:
@@ -146,7 +146,9 @@ def command_tests(binary,s):
                 opens.append((name.decode(),c.accu_a.value));c.accu_a.set(3);c.C=0
             elif op==s['I$SetStt']:
                 assert c.accu_a.value==3 and c.accu_b.value==s['SS.Rename'] and c.index_y.value==60
-                packets.append(get(c.index_x.value,60));c.accu_b.set(stat_error);c.C=int(stat_error!=0)
+                packets.append(get(c.index_x.value,60))
+                if stat_error:c.accu_b.set(stat_error)
+                c.C=int(stat_error!=0)
             elif op==s['I$Close']:
                 closes.append(c.accu_a.value);c.accu_b.set(close_error);c.C=int(close_error!=0)
             else:raise AssertionError(('unexpected command syscall',op))
@@ -165,6 +167,6 @@ if __name__=='__main__':
     with tempfile.TemporaryDirectory() as folder:
         tmp=Path(folder)
         for level in (1,2):
-            b,s=assemble(tmp,level,f'level{level}/modules/rbf.asm');tests(b,s,level)
+            b,s=assemble(tmp,level,'level1/modules/rbf.asm');tests(b,s,level)
 
         b,s=assemble(tmp,1,'level1/cmds/rename.asm');command_tests(b,s)

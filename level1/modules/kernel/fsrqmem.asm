@@ -10,18 +10,24 @@
 ;;;         U = The address of the newly allocated area.
 ;;;        CC = Carry flag clear to indicate success.
 ;;;
-;;; Error:  B = A non-zero error code.
+;;; Error:  B = E$BPAddr for a zero-byte request; E$MemFul if the size exceeds
+;;;             $FF00 or no contiguous area is available.
 ;;;        CC = Carry flag set to indicate error.
 ;;;
 ;;; F$SRqMem allocates contiguous memory from the system in 256 byte pages. There are 256 of these 256 byte pages
 ;;; in the entire address space. It returns memory from the top of the system RAM map down, and rounds the size
-;;; request to the next 256 byte page boundary.
+;;; request to the next 256 byte page boundary. Requests of zero or above $FF00 are refused.
+;;; A zero allocation has no valid area to return; F$SRtMem instead treats zero as a no-op.
 
 **************************************************
 * F$SRqMem - Level 1 implementation
 *
+* Reject zero and sizes above $FF00: rounding those to zero pages would pass
+* an invalid zero count to AllocBit and overwrite memory beyond the bitmap.
 FSRqMem             ldd       R$D,u     ; get memory allocation size requested from the caller's D
+                    beq       SRqBadSize ; zero bytes cannot identify an allocated area
                     addd      #$00FF    ; round it up to nearest 256 byte page (e.g. $1FF = $2FE)
+                    bcs       ex@       ; reject rounding overflow before clearing carry
                     clrb                ; just keep # of pages (e.g. $2FE = $200)
                     std       R$D,u     ; save rounded version back to caller's D
 * Start searching from the top of free memory allocation bitmap down, searching for 'D' contiguous bits
@@ -72,6 +78,10 @@ ex@                 comb                ; set carry
                     ldb       #E$MemFul ; indicate memory is full
                     rts                 ; return to the caller
 
+SRqBadSize          comb                ; shared invalid allocation/return error
+                    ldb       #E$BPAddr ; invalid size, alignment or extent
+                    rts
+
 ;;; F$SRtMem
 ;;;
 ;;; Return one or more pages of memory to the free memory pool.
@@ -86,18 +96,22 @@ ex@                 comb                ; set carry
 ;;;
 ;;; F$SRtMem returns memory allocated by F$SRqMem to the system.
 
-FSRtMem             ldd       R$D,u     ; get the memory allocation size requested from the caller's D
+FSRtMem             ldd       R$U,u     ; a null address is always ignored
+                    beq       okex      ; preserve the existing null-address no-op
+                    ldd       R$D,u     ; get the memory allocation size requested from the caller's D
+                    beq       okex      ; zero bytes must not reach DelBit with a zero count
                     addd      #$00FF    ; round it up to nearest 256 byte page (e.g. $1FF = $2FE)
+                    bcs       SRqBadSize ; reject rounding overflow before clearing carry
                     tfr       a,b       ; put MSB into B
                     clra                ; now D reflects number of 256 byte pages to return
                     tfr       d,y       ; put the 16 bit page count into Y
+                    addb      R$U,u     ; add starting page to page count
+                    bcc       inrange@  ; end below page 256 is representable
+                    bne       SRqBadSize ; carry with nonzero result extends beyond page 256
+inrange@            equ       *         ; an end exactly at $10000 is also valid
                     ldd       R$U,u     ; get the address of memory to free from the caller's U
-                    beq       okex      ; if user passed 0, ignore
                     tstb                ; check for B = 0 (it should!)
-                    beq       returnmem@ ; it does... return it to the system
-                    comb                ; the user has passed B<>0 for the address
-                    ldb       #E$BPAddr ; the error is bad page address
-                    rts                 ; return to the caller
+                    bne       SRqBadSize ; reject an unaligned address
 returnmem@          exg       a,b       ; swap A/B
                     ldx       <D.FMBM   ; get pointer to free memory bitmap
                     bra       DelBit    ; call into F$DelBit to delete bits

@@ -69,6 +69,44 @@ ifneq ($(filter-out 0 1 2 3 4,$(VDG_WINDOWS)),)
 $(error VDG_WINDOWS=$(VDG_WINDOWS): HIRES allows 0 to 4)
 endif
 endif
+# SSFM=2 makes /Term and /V1../V7 (VDG_WINDOWS, at most 7) V9958 text
+# screens, 40x24 or 80x24 (SSFM_COLS=40|80) for all of them, each in its
+# own $2000 VRAM page. The VDG only shows the boot messages.
+# SSFM=1 adds /V9, a text screen on the SuperSprite-FM+ (V9958): 40x24 or
+# 80x24 (SSFM_COLS=40|80), true lower case. CLEAR/SHIFT-CLEAR switch
+# between it and the VDG screens (start a shell with "shell i=/v9&").
+# SSFM_MPI=1 when the board is jumpered to $FF58-$FF5E (MPI/MultiPack),
+# 0 for $FF78-$FF7E (Y-cable module). SSFM_SLOTSW=1 also selects the
+# board's MPI slot around every VDP access (needed when the board is in
+# another MPI slot than the disk controller and uses $FF58-$FF5E); then
+# SSFM_SLOT is the value written to $FF7F to select the board's slot:
+# slot 1 = 0, slot 2 = 17, slot 3 = 34, slot 4 = 51.
+# SSFM_DEBUG=1 routes the monitor to the V9958 as soon as /V9 is
+# initialised (INIZ /V9), to test the ports without relying on CLEAR.
+# Needs HIRES=0.
+SSFM ?= 0
+SSFM_COLS ?= 80
+SSFM_MPI ?= 1
+SSFM_SLOTSW ?= 0
+SSFM_SLOT ?= 0
+SSFM_DEBUG ?= 0
+ifneq ($(SSFM),0)
+ifneq ($(HIRES),0)
+$(error SSFM=$(SSFM) needs HIRES=0)
+endif
+AFLAGS_SSFM = -DSSFM=$(SSFM) -DV9COLS=$(SSFM_COLS) -DMPI=$(SSFM_MPI) -DSLOTSW=$(SSFM_SLOTSW) -DV9SLOT=$(SSFM_SLOT) -DSSFMDBG=$(SSFM_DEBUG)
+ifeq ($(SSFM),2)
+SSFMDEV =
+AFLAGS_VDG += -DUSEV9=$(SSFM_COLS)
+else ifeq ($(SSFM),1)
+SSFMDEV = ssv9.dw
+else
+$(error Unsupported SSFM "$(SSFM)"; use SSFM=0, 1 or 2)
+endif
+else
+AFLAGS_SSFM =
+SSFMDEV =
+endif
 TRACKS ?= 40
 PwrLnFrq ?= 60
 
@@ -137,7 +175,7 @@ KERNEL_TRACK ?= $(REL) $(BOOTER) krn
 KERNELFILE = kerneltrack
 
 VDGWINS = $(foreach n,$(wordlist 1,$(VDG_WINDOWS),1 2 3 4 5 6 7),v$(n).dw)
-SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(VDGCO) term_vdg.dt $(VDGWINS)
+SCF ?= scf.mn vtio.dr snddrv_cc3.sb joydrv_joy.sb $(VDGCO) term_vdg.dt $(VDGWINS) $(SSFMDEV)
 PIPE ?= pipeman.mn piper.dr pipe.dd
 CLOCK ?= clock_$(PwrLnFrq)hz clock2_soft
 
@@ -153,6 +191,17 @@ $(addprefix $(MODDIR)/,vtio.dr covdg.io cohr.io co42.io): $(DEFSDIR)/cocovtio.d
 # ---------------------------------------------------------------------------
 # Disk contents
 STARTUP ?= $(NITROS9DIR)/level2/$(PORT)/startup
+
+# With SSFM > 0 the startup file gets one more welcome line (and the
+# closing asterisks of the welcome box are aligned).
+ifneq ($(SSFM),0)
+STARTUPFILE = $(MODDIR)/startup
+SSFMAWK = $(NITROS9DIR)/recipes/immunity/ssfm_startup.awk
+$(STARTUPFILE): $(STARTUP) $(SSFMAWK) | $(MODDIR)
+	awk -f $(SSFMAWK) $< > $@
+else
+STARTUPFILE = $(STARTUP)
+endif
 
 SYSDIR      ?= .sys
 SYS_RECIPE  ?= $(NITROS9DIR)/recipes/support/coco3-system.mak
@@ -188,7 +237,7 @@ kernelfile: $(addprefix $(MODDIR)/,$(KERNEL_TRACK))
 bootfile: $(addprefix $(MODDIR)/,$(BOOTMODS))
 	$(MERGE) $(addprefix $(MODDIR)/,$(BOOTMODS))>$@
 
-$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(GEN_DEPS) $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUP) | $(SYSDIR)
+$(DSKIMAGE): libs kernelfile bootfile $(MODDIR)/sysgo_dd $(GEN_DEPS) $(addprefix $(MODDIR)/,$(CMDS)) $(STARTUPFILE) | $(SYSDIR)
 	$(RM) $@
 	$(OS9FORMAT_CMD) -q $@ -n"NitrOS-9/$(CPU) Level $(LEVEL)"
 	$(GEN_PRE)
@@ -210,7 +259,7 @@ endif
 	$(OS9ATTR_EXEC) $(foreach file,$(CMDS),$@,CMDS/$(file))
 	$(OS9COPY) $(MODDIR)/sysgo_dd $@,sysgo
 	$(OS9ATTR_EXEC) $@,sysgo
-	$(CPL) $(STARTUP) $@,startup
+	$(CPL) $(STARTUPFILE) $@,startup
 	$(OS9ATTR_TEXT) $@,startup
 	$(call RECIPE_INSTALL,$@)
 
@@ -241,7 +290,12 @@ $(MODDIR)/co42.io: $(L2PMD)/cohr.asm $(L2PMD)/co42font.asm | $(MODDIR)
 # Module variants
 
 $(MODDIR)/covdg.io: covdg.asm | $(MODDIR)
-	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DALLCAPS=$(UPPERCASE)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DALLCAPS=$(UPPERCASE) $(AFLAGS_SSFM)
+$(MODDIR)/covdg.io: ssfm.asm vdp9958.asm vdpfont.asm
+
+# V9958 text screen descriptor (-DCOLS=40 or 80)
+$(MODDIR)/ssv9.dw: v9win.asm | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DCOLS=$(SSFM_COLS)
 
 # /term: default VDG character set (descriptor parity byte, see term_vdg.asm)
 ifeq ($(VDG_T1),1)
@@ -350,8 +404,10 @@ $(MODDIR)/tmode: xmode.asm | $(MODDIR)
 $(MODDIR)/shell: $(addprefix $(MODDIR)/,$(SHELLMODS)) | $(MODDIR)
 	$(MERGE) $(addprefix $(MODDIR)/,$(SHELLMODS)) >$@
 
-$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) | $(MODDIR)
-	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@
+$(MODDIR)/utilpak1: $(addprefix $(MODDIR)/,$(UTILPAK1)) $(NITROS9DIR)/scripts/check-utilpak-size.py | $(MODDIR)
+	$(MERGE) $(addprefix $(MODDIR)/,$(UTILPAK1)) >$@.tmp
+	python3 $(NITROS9DIR)/scripts/check-utilpak-size.py $@.tmp
+	$(MOVE) $@.tmp $@
 
 clean:
 	$(RM) *.list *.map bootfile $(KERNELFILE) *.dsk buildinfo $(CLEAN_EXTRA)

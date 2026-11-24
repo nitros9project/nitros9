@@ -188,9 +188,10 @@ end)
         lua += '\n' + args.replay.read_text()
     (output / 'boot.lua').write_text(lua)
     (output / 'passed.txt').unlink(missing_ok=True)
+    # The game recipes build 40-track disks; an 80-track QD drive missteps.
     command += ['-cfg_directory', 'cfg', '-nvram_directory', 'nvram', '-snapshot_directory', 'snap',
                 '-skip_gameinfo', '-sound', 'none', '-video', 'soft', '-window', '-nothrottle',
-                '-ram', args.ram, '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525qd',
+                '-ram', args.ram, '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525dd',
                 '-flop1', str(disk), '-autoboot_delay', '3', '-autoboot_script', 'boot.lua',
                 '-seconds_to_run', str(args.seconds)]
     if args.disk2:

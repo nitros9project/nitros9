@@ -146,7 +146,7 @@ L01F0               lda       #$24
                     clra
                     tst       <narrow
                     beq       L0202
-                    lbsr      L024F
+                    bsr       L024F
 L0202               ldb       <$19,x
                     lbsr      L02C3
                     lbsr      L0292

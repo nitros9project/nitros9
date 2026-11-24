@@ -27,18 +27,23 @@ atrv                set       ReEnt+rev
 rev                 set       $00
 
 * Window descriptor definitions
-                    ifne      USECOHR
+                  IFNE    USEV9
+szx                 set       USEV9     40x24 or 80x24 text on the V9958 (SSFM=2)
+szy                 set       24
+                  ELSE
+                  IFNE    USECOHR
 szx                 set       51        51x24 text on PMODE 4 (CoHR)
 szy                 set       24
-                    else
-                    ifne      USECO42
+                  ELSE
+                  IFNE    USECO42
 szx                 set       42        42x24 text on PMODE 4 (Co42)
 szy                 set       24
-                    else
+                  ELSE
 szx                 set       32        number of columns for display
 szy                 set       16        number for rows for display
-                    endc
-                    endc
+                  ENDC
+                  ENDC
+                  ENDC
 wnum                set       WNUM      window number (1-7)
 sty                 set       1         window type
 cpx                 set       0         x cursor position
