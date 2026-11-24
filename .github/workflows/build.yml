@@ -242,3 +242,45 @@ jobs:
           recipes/coco3/rfm_mame_test/.rfm-test/
         retention-days: 14
         if-no-files-found: ignore
+
+  test-report:
+    name: Test evidence report
+    if: ${{ always() && ((github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.suite != 'quick')) }}
+    needs: [quick, build, prepare-mame, mame-smoke, filesystem-cpu, filesystem-mame]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      actions: read
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v5
+    - name: Download test evidence
+      continue-on-error: true
+      uses: actions/download-artifact@v4
+      with:
+        path: ${{ runner.temp }}/test-artifacts
+        pattern: "*-results"
+    - name: Collect run and job metadata
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$RUNNER_TEMP/test-run.json"
+        gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" > "$RUNNER_TEMP/test-jobs.json"
+    - name: Build readable evidence report
+      run: |
+        python3 scripts/ci-test-report.py \
+          --artifacts "$RUNNER_TEMP/test-artifacts" \
+          --run-json "$RUNNER_TEMP/test-run.json" \
+          --jobs-json "$RUNNER_TEMP/test-jobs.json" \
+          --output "$RUNNER_TEMP/test-report"
+        cat "$RUNNER_TEMP/test-report/summary.md" >> "$GITHUB_STEP_SUMMARY"
+    - name: Upload test evidence report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-evidence-report
+        include-hidden-files: true
+        path: ${{ runner.temp }}/test-report/
+        retention-days: 14
+        if-no-files-found: error
