@@ -267,15 +267,22 @@ jobs:
       run: |
         gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > "$RUNNER_TEMP/test-run.json"
         gh api --paginate --slurp "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?filter=latest&per_page=100" > "$RUNNER_TEMP/test-jobs.json"
+    - name: Set up PDF report dependencies
+      run: |
+        python3 -m venv "$RUNNER_TEMP/report-venv"
+        "$RUNNER_TEMP/report-venv/bin/pip" install -r scripts/requirements-test-report.txt
+    - name: Test PDF output and links
+      run: '"$RUNNER_TEMP/report-venv/bin/python" -m unittest discover -s scripts -p test_ci_test_report_pdf.py -v'
     - name: Build readable evidence report
       run: |
-        python3 scripts/ci-test-report.py \
+        "$RUNNER_TEMP/report-venv/bin/python" scripts/ci-test-report.py \
           --artifacts "$RUNNER_TEMP/test-artifacts" \
           --run-json "$RUNNER_TEMP/test-run.json" \
           --jobs-json "$RUNNER_TEMP/test-jobs.json" \
           --output "$RUNNER_TEMP/test-report"
-        cat "$RUNNER_TEMP/test-report/summary.md" >> "$GITHUB_STEP_SUMMARY"
+        "$RUNNER_TEMP/report-venv/bin/python" scripts/ci-test-report-pdf.py --report "$RUNNER_TEMP/test-report"
     - name: Upload test evidence report
+      id: html
       if: always()
       uses: actions/upload-artifact@v4
       with:
@@ -284,3 +291,28 @@ jobs:
         path: ${{ runner.temp }}/test-report/
         retention-days: 14
         if-no-files-found: error
+    - name: Upload PDF report
+      id: pdf
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-report-pdf
+        path: ${{ runner.temp }}/test-report/test-report.pdf
+        retention-days: 14
+        if-no-files-found: error
+    - name: Surface report downloads
+      if: always()
+      env:
+        PDF_URL: ${{ steps.pdf.outputs.artifact-url }}
+        HTML_URL: ${{ steps.html.outputs.artifact-url }}
+      run: |
+        printf '# Read the test report\n\n' >> "$GITHUB_STEP_SUMMARY"
+        if [ -n "$PDF_URL" ]; then
+          printf '**[Download the PDF report (ZIP)](%s)**\n\n' "$PDF_URL" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        if [ -n "$HTML_URL" ]; then
+          printf '[Download HTML and raw evidence (ZIP)](%s)\n\n' "$HTML_URL" >> "$GITHUB_STEP_SUMMARY"
+        fi
+        if [ -f "$RUNNER_TEMP/test-report/summary.md" ]; then
+          cat "$RUNNER_TEMP/test-report/summary.md" >> "$GITHUB_STEP_SUMMARY"
+        fi
