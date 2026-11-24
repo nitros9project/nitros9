@@ -52,7 +52,11 @@ module directories so CPU variants do not share compiled outputs.
 
 Full/nightly runs and manually selected build, MAME, or filesystem suites
 finish with a **Test evidence report** job. Download the **test-evidence-report**
-artifact from the run summary, extract the ZIP, and open `index.html`. It is
+artifact from the run summary, extract the ZIP, and open `index.html`.
+For a standalone document, use the **Download the PDF report** link in the
+**Test evidence report** job summary. GitHub downloads this as a ZIP containing
+`test-report.pdf`; extract it and open the PDF. It includes clickable run/job
+links and section bookmarks. It is
 readable offline and embeds guest screenshots. Keep the `evidence` directory
 beside it to follow links to the bundled result files and logs.
 
@@ -68,7 +72,7 @@ rather than treated as passing evidence.
 The artifact includes machine-readable run/job metadata, a summary, and an
 evidence inventory with SHA-256 hashes for bundled files. Full guest disk
 images and files larger than 2 MB remain in the original test artifacts on
-the run page. Reports are retained for 14 days.
+the run page. Both PDF and HTML reports are retained for 14 days.
 
 To generate a report locally from an existing run:
 
