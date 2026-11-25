@@ -1,4 +1,7 @@
 ifeq ($(LEVEL),1)
+.PHONY: FORCE
+FORCE:
+
 SYSDIR = .sys
 $(SYSDIR):
 	mkdir -p $@
