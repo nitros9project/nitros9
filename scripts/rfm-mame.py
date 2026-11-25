@@ -146,6 +146,8 @@ class Fixture:
             data.append(byte & 127)
             if len(data) > 255:
                 raise ValueError('oversized pathname')
+        if any(byte<32 or byte==127 for byte in data):
+            raise ValueError('control character in pathname')
         text = data.decode('ascii')
         self.last_pathname = text
         absolute = text.startswith('/')
@@ -443,6 +445,37 @@ def resident_modules(bootfile):
         raise ValueError('missing resident RFM modules: ' + ', '.join(sorted(required - names)))
     return names
 
+def irq_stress_script(level):
+    if level==1:
+        return '\n'.join([
+            '  local space = manager.machine.devices[":maincpu"].spaces["program"]',
+            '  local stat = space:read_u16(0x0e)',
+            '  if frames >= 2700 and stat ~= 0 then',
+            '    space:write_u8(stat+0x20,1)',
+            '    space:write_u8(stat+0x22,1)',
+            '    space:write_u8(stat+0x23,space:read_u8(stat+0x23)|1)',
+            '  end'])
+    return '''
+  -- Make the existing DWIO VIRQ due every frame, while RFM is doing I/O.
+  local ram = emu.item(manager.machine.devices[":ram"].items["0/m_pointer"])
+  local mmu = emu.item(manager.machine.devices[":gime"].items["0/m_mmu"])
+  local stat = ram:read(0x0e)*256 + ram:read(0x0f)
+  if frames >= 2700 and stat ~= 0 then
+    local phys = (mmu:read(stat >> 13) & 63)*8192 + (stat & 8191)
+    if phys+0x24 < ram.count then
+    ram:write(phys+0x20,1) -- Vi.Cnt low
+    ram:write(phys+0x22,1) -- Vi.Rst low
+    ram:write(phys+0x23,ram:read(phys+0x23)|1) -- Vi.IFlag
+    end
+  end
+'''
+
+
+def guest_script(path):
+    """ToolShed's text copy used to convert these files; raw copies need CRs."""
+    return path.read_text().replace('\n','\r').encode('ascii')
+
+
 def run(args):
     root=args.root.resolve()
     resident_modules(args.disk.resolve().parent / 'bootfile')
@@ -452,7 +485,8 @@ def run(args):
     if args.level==1:
         auto=auto.replace('load utilpak1','load echo').replace('keyrpt 0 0</1','')
     auto_file=root/'rfmauto';auto_file.write_bytes(auto.replace('\n','\r').encode())
-    for source,name in [(recipe/'rfmcheck','rfmcheck'),(auto_file,'rfmauto')]:
+    case_file=root/'rfmcheck';case_file.write_bytes(guest_script(recipe/'rfmcheck'))
+    for source,name in [(case_file,'rfmcheck'),(auto_file,'rfmauto')]:
         subprocess.run(['os9','copy','-r',str(source),str(args.disk.resolve())+','+name],check=True,capture_output=True)
 
     print('Bootfile contains RFM, rfmdrv, Y0 and DWIO', flush=True)
@@ -483,20 +517,7 @@ def run(args):
     auto_command = '' if args.interactive or args.input_probe else 'r=</dd/rfmauto\n'
     probe_commands = {2700: 'load utilpak1\n', 3600: 'chd /y0/rfmtest/data\n',
                       4200: 'd', 4500: 'ir\n', 4800: 'echo AFTER\n'} if args.input_probe else {}
-    irq_lua = '''
-  -- Make the existing DWIO VIRQ due every frame, while RFM is doing I/O.
-  local ram = emu.item(manager.machine.devices[":ram"].items["0/m_pointer"])
-  local mmu = emu.item(manager.machine.devices[":gime"].items["0/m_mmu"])
-  local stat = ram:read(0x0e)*256 + ram:read(0x0f)
-  if frames >= 2700 and stat ~= 0 then
-    local phys = (mmu:read(stat >> 13) & 63)*8192 + (stat & 8191)
-    if phys+0x24 < ram.count then
-    ram:write(phys+0x20,1) -- Vi.Cnt low
-    ram:write(phys+0x22,1) -- Vi.Rst low
-    ram:write(phys+0x23,ram:read(phys+0x23)|1) -- Vi.IFlag
-    end
-  end
-''' if args.irq_stress else ''
+    irq_lua = irq_stress_script(args.level) if args.irq_stress else ''
     probe_lua = '\n'.join(f'  if frames == {frame} then emu.keypost({json.dumps(command)}) end'
                           for frame, command in probe_commands.items())
     lua.write_text(f"""emu.keypost({json.dumps('DOS' + chr(10))})
@@ -550,9 +571,13 @@ end)
         print('Logs:', root, flush=True)
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
         passed = False
+        diagnostics=(root/'mame.log').open(errors='replace')
         try:
             deadline = time.monotonic() + args.seconds
             while process.poll() is None and time.monotonic() < deadline:
+                message=diagnostics.read()
+                if '[LUA ERROR]' in message:
+                    raise RuntimeError('MAME Lua observer failed; inspect mame.log: '+message[-1000:])
                 if fixture.errors:
                     raise RuntimeError('; '.join(fixture.errors))
                 if fixture.root / 'rfmtest/done' in fixture.closed and not fixture.verified(expected):
@@ -568,6 +593,7 @@ end)
                         break
                 time.sleep(.2)
         finally:
+            diagnostics.close()
             stopping.set()
             if process.poll() is None:
                 process.terminate()
