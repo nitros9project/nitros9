@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Boot local OS-9 in CoCo 3 MAME and verify guest FAT/blkdrv results on disk."""
+"""Boot local OS-9 on either CoCo level in MAME and verify guest FAT/blkdrv results on disk."""
 import importlib.util
 import argparse
 import hashlib
@@ -63,7 +63,7 @@ def main():
     if args.video:
         args.video.parent.mkdir(parents=True,exist_ok=True)
         command += ['-aviwrite',str(args.video.resolve()),'-snapsize','640x480']
-    print('Running CoCo 3 MAME; artifacts:',root,flush=True)
+    print('Running MAME',command[1],'Level',args.level,'artifacts:',root,flush=True)
     with (root/'mame.log').open('w') as log:
         process=subprocess.Popen(command,stdout=log,stderr=subprocess.STDOUT)
         try:

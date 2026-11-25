@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""CoCo 3 integration fixture: local floppy OS, RFM over MAME Becker TCP.
+"""CoCo Level One/Two integration fixture: local floppy OS, RFM over MAME Becker TCP.
 This deliberately small peer is not a production DriveWire server.
 """
 import argparse
@@ -567,7 +567,7 @@ end)
             command += ['-video', 'none', '-sound', 'none']
         else:
             command += ['-window']
-        print('Starting local RFM fixture and CoCo 3 MAME', flush=True)
+        print('Starting local RFM fixture and MAME',machine,'Level',args.level,flush=True)
         print('Logs:', root, flush=True)
         process = subprocess.Popen(command, stdout=log, stderr=subprocess.STDOUT)
         passed = False
