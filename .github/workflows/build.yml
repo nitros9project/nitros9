@@ -93,7 +93,7 @@ jobs:
     - name: Restore or download verified ROMs once
       uses: ./.github/actions/setup-mame-roms
     - name: Share verified ROMs with this run
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: verified-mame-roms
         path: ${{ runner.temp }}/roms/*.zip
@@ -153,7 +153,7 @@ jobs:
 
     - name: Upload game diagnostics
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: game-boot-results
         include-hidden-files: true
@@ -165,7 +165,7 @@ jobs:
 
     - name: Upload boot diagnostics
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: mame-boot-results
         path: ${{ runner.temp }}/mame-results
@@ -191,7 +191,7 @@ jobs:
       run: bash scripts/ci-filesystems.sh "$RUNNER_TEMP/filesystem-cpu"
     - name: Upload CPU regression diagnostics
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: filesystem-cpu-results
         path: ${{ runner.temp }}/filesystem-cpu
@@ -237,7 +237,7 @@ jobs:
           2>&1 | tee "$RUNNER_TEMP/filesystem-integration/run.log"
     - name: Upload filesystem integration diagnostics
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: filesystem-${{ matrix.suite }}-${{ matrix.cpu }}-results
         include-hidden-files: true
@@ -280,7 +280,7 @@ jobs:
       run: xvfb-run -a make -C recipes/coco/l1_mame_test MAME_MACHINE="$MAME_MACHINE" MAME_ROMPATH="$MAME_ROMPATH" check
     - name: Upload Level One evidence
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: level1-${{ matrix.machine }}-results
         include-hidden-files: true
@@ -302,7 +302,7 @@ jobs:
       uses: actions/checkout@v5
     - name: Download test evidence
       continue-on-error: true
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v7
       with:
         path: ${{ runner.temp }}/test-artifacts
         pattern: "*-results"
@@ -329,7 +329,7 @@ jobs:
     - name: Upload test evidence report
       id: html
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: test-evidence-report
         include-hidden-files: true
@@ -339,7 +339,7 @@ jobs:
     - name: Upload PDF report
       id: pdf
       if: always()
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v6
       with:
         name: test-report-pdf
         path: ${{ runner.temp }}/test-report/test-report.pdf
