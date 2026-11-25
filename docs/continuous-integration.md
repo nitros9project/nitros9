@@ -134,3 +134,14 @@ make -C recipes/coco/l1_mame_test MAME_MACHINE=coco2b MAME_ROMPATH=/path/to/roms
 Use separate clean recipe outputs when switching CPU variants locally. Nightly
 matrix jobs each start in their own checkout. `LEAK_CYCLES` can shorten a local
 debug run; nightly CI keeps the 1,000-cycle default and records the actual count.
+
+## Shared emulator ROMs
+
+The preparation job restores the checksum-pinned ROM cache across runs. On a
+cache miss, that job downloads and verifies the archives once, saves the cache,
+and publishes a `verified-mame-roms` artifact for the current run. Every emulator
+job downloads that small artifact and verifies its checksums; test jobs never
+contact the ROM download site. The artifact lasts one day; the reusable cache
+is independent of artifact retention. If GitHub evicts the cache, only the
+preparation job needs to fetch the ROMs again. Incomplete or incorrect downloads
+are never installed as verified archives.
