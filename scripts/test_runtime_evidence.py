@@ -41,7 +41,6 @@ class ResourceEvidenceTests(unittest.TestCase):
         with self.assertRaises(AssertionError):
             runtime.resources(checkpoint(0,0)+checkpoint(200,2),200)
 
-if __name__=='__main__':unittest.main()
 
 
 def ownership_fixture():
@@ -74,3 +73,7 @@ class OwnershipEvidenceTests(unittest.TestCase):
         with self.assertRaises(AssertionError):runtime.multiprocess(broken,children)
         broken=bytearray(children[0]);broken[2*878+12+0x80+11]=1
         with self.assertRaises(AssertionError):runtime.multiprocess(parent,[broken,children[1]])
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -82,6 +82,7 @@ def main():
         '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-autoboot_delay','3',
         '-autoboot_script',str(root/'run.lua'),'-seconds_to_run','36000','-sound','none','-video','none','-nothrottle']
+    (root/'command.json').write_text(json.dumps(command,indent=2)+'\n')
     with (root/'mame.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=3600)
     console=(root/'console.log').read_bytes();(root/'console.txt').write_bytes(console.replace(b'\r',b'\n'))
     assert all(marker in console for marker in (b'MODULEGROUPPASS',b'MULTIPROCESSPASS',b'RESOURCELEAKPASS',b'RUNTIMEGROUPSPASS')),('guest regression failed',str(root/'console.txt'))
@@ -99,7 +100,7 @@ def main():
     resources=evidence.resources(extract('leak.bin'),a.cycles)
     spec_disk=importlib.util.spec_from_file_location('disk_evidence',ROOT/'scripts/rbf-disk-evidence.py')
     disk_evidence=importlib.util.module_from_spec(spec_disk);spec_disk.loader.exec_module(disk_evidence)
-    disk_evidence.check(recipe/('l2_coco3_module_group_mame_test.dsk' if 'module-group' in Path(__file__).name else 'l1_coco_l1_mame_test.dsk'),disk,root)
+    disk_evidence.check(recipe/'l2_coco3_module_group_mame_test.dsk',disk,root)
     (root/'result.json').write_text(json.dumps({'passed':True,'cpu':a.cpu,'cases':cases,'multiprocess':processes,'resources':resources},indent=2)+'\n')
     print('PASS: synchronized two-process ownership; measured resource stability over',a.cycles,'cycles; two distinct modules in one file; single/multiple blocks; both unlink orders and extra unlink; resident preservation/dynamic reclamation; artifacts:',root)
 

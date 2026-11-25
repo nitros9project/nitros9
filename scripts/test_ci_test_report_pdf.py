@@ -69,6 +69,16 @@ class PdfReportTests(unittest.TestCase):
         self.assertIn('2 -> 1 -> 1 -> 0', text)
         self.assertIn('333E', text)
 
+    def test_pdf_shows_measured_resources_for_cpu_qualified_job(self):
+        artifact=self.artifacts/'filesystem-module-groups-6309-results';artifact.mkdir()
+        metrics=dict(free_blocks=47,processes=5,tasks=4,paths=5)
+        (artifact/'result.json').write_text(json.dumps(dict(passed=True,resources=dict(cycles=1000,
+            checkpoints=[dict(sequence=n,metrics=metrics) for n in (0,100,1000)]))))
+        _,text=self.build([{'name':'Filesystem integration (module-groups-6309)','conclusion':'success'}])
+        self.assertIn('1000 balanced cycles',text)
+        self.assertIn('Free 8K blocks',text)
+        self.assertNotIn('No bundled artifact evidence',text)
+
     def test_pdf_preserves_missing_evidence_warning(self):
         _, text = self.build([{'name': 'Filesystem CPU regressions', 'conclusion': 'success'}])
         self.assertIn('Review incomplete or conflicting evidence', text)

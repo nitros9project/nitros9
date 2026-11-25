@@ -42,7 +42,7 @@ def main():
     assert b'transient' not in listing.stdout.lower(), 'temporary file was not deleted'
     spec_disk=importlib.util.spec_from_file_location('disk_evidence',ROOT/'scripts/rbf-disk-evidence.py')
     disk_evidence=importlib.util.module_from_spec(spec_disk);spec_disk.loader.exec_module(disk_evidence)
-    disk_evidence.check(recipe/('l2_coco3_module_group_mame_test.dsk' if 'module-group' in Path(__file__).name else 'l1_coco_l1_mame_test.dsk'),disk,root)
+    disk_evidence.check(recipe/'l1_coco_l1_mame_test.dsk',disk,root)
     (root/'result.json').write_text(json.dumps(dict(passed=True,machine=a.machine,cpu='6809',level=1,
         checks=['boot','create directory','513-byte write/read','sector-boundary seek','relative reopen','EOF','delete']),indent=2)+'\n')
     print('PASS: Level One boot and RBF runtime on',a.machine,'artifacts:',root)
