@@ -110,7 +110,7 @@ def run(args):
     lua+=(ROOT/'scripts/mame-disk-script.lua').read_text()
     (logs/'run.lua').write_text(lua)
     seconds=args.seconds
-    cmd=[args.mame,'coco3','-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
+    cmd=[args.mame,('coco3h' if args.cpu=='6309' else 'coco3'),'-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
         '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-hard1',str(media),
         '-autoboot_delay','3','-autoboot_script',str(logs/'run.lua'),'-seconds_to_run',str(seconds),
@@ -192,7 +192,7 @@ def run(args):
         assert set(records)<=reads,f'file was not fully read from VHD: {name}'
         verified_files.append(name)
     if args.write_test:fat_check.check(media,logs/'fsck.log',args.fsck)
-    (logs/'result.json').write_text(json.dumps({'passed':True,'resident':manifest['resident'],
+    (logs/'result.json').write_text(json.dumps({'passed':True,'cpu':args.cpu,'resident':manifest['resident'],
         'loaded_files':verified_files,'floppy_sha256':hashes[0],'fat32_sha256':digest(media),'write_test':args.write_test,'reopen':args.reopen,'errors':errors,
         'non_rbf_rejections':errors.count(249) if args.write_test else 0,
         'disk_scripts':True,
@@ -215,6 +215,7 @@ def main():
     p=argparse.ArgumentParser()
     p.add_argument('action',choices=('prepare','run'));p.add_argument('--recipe',type=Path,required=True)
     p.add_argument('--root',type=Path,required=True);p.add_argument('--mame',default='mame')
+    p.add_argument('--cpu',choices=('6809','6309'),default='6809')
     p.add_argument('--rompath',default=os.environ.get('MAME_ROMPATH',''));p.add_argument('--seconds',type=int,default=260)
     p.add_argument('--write-test',action='store_true')
     p.add_argument('--reopen',action='store_true',help='Boot the previous writable run image without resetting it')

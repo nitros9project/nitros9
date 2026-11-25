@@ -4,7 +4,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 export NITROS9DIR="$PWD"
 suite=${1:?Usage: ci-filesystems-mame.sh SUITE}
-common=("PYTHON=${PYTHON:-python3}" "MAME_BINARY=${MAME_BINARY:-mame}"
+common=("CPU=${CPU:-6809}" "PYTHON=${PYTHON:-python3}" "MAME_BINARY=${MAME_BINARY:-mame}"
     "MAME_ROMPATH=${MAME_ROMPATH:?MAME_ROMPATH is required}" "FAT_CHECK=${FAT_CHECK:-fsck.fat}")
 case "$suite" in
     pcf-write)

@@ -24,7 +24,8 @@ COVERAGE = {
     'rbf': 'Recursive deletion and cancellation in a nested tree, regular-file deletion, preservation of an unrelated file, and independent disk allocation checks.',
     'rfm': 'Real guest RFM requests go through a local DriveWire fixture, with protocol, returned-content, directory, and host-filesystem assertions.',
     'rfm-irq': 'RFM directory operations under forced DWIO interrupt polling, with protocol and returned-result assertions.',
-    'module-groups': 'Two distinct modules in single-block, multi-block and resident groups, in both unlink orders. Check survivor execution, duplicate-unlink protection, final unmapping and storage lifetime.',
+    'level1': 'CoCo 1/2 Level One boots and verifies directory creation, 513-byte content, sector-boundary seeks, relative reopen, EOF and deletion.',
+    'module-groups': 'Synchronized two-process ownership and 1,000 balanced resource cycles supplement two distinct modules in single-block, multi-block and resident groups, in both unlink orders. Check survivor execution, duplicate-unlink protection, final unmapping and storage lifetime.',
 }
 ARTIFACTS = {
     'MAME smoke tests': ['mame-boot-results', 'game-boot-results'],
@@ -46,6 +47,8 @@ def conclusion(job):
 
 def required_artifacts(job):
     key = job_name(job)
+    if job['name'].startswith('Level One runtime ('):
+        return ['level1-' + job['name'][len('Level One runtime ('):-1] + '-results']
     if key != job['name']:
         return ['filesystem-' + key + '-results']
     return ARTIFACTS.get(key, [])
@@ -143,6 +146,13 @@ def generate(artifacts, run, jobs, output):
                                  ' → '.join(f'{state["dat"][slot]:04X}' for state in states)])
                 html += '<h4>Recorded group counts and mappings</h4><p>Stages: both linked → first unlink → extra unlink → final unlink. 333E means an unmapped slot. Survivor execution is asserted in the guest; the screenshot alone cannot establish it.</p>'
                 html += table(['Group', 'Unlink order', 'P$Links', 'DAT entry (hex)'], rows)
+            if data.get('multiprocess'):
+                html += '<h4>Two-process module ownership</h4><p>Both release orders execute surviving modules after the other process releases its mappings and attempts another unlink.</p>'
+                html += table(['Case', 'Parent PID', 'Child PID', 'Child group references'], [[c['case'], c['parent'][1]['pid'], c['child'][0]['pid'], '1 → 1 → 2 → 1 → 0'] for c in data['multiprocess']])
+            if data.get('resources'):
+                resource = data['resources']
+                html += '<h4>Measured resource stability</h4><p>' + str(resource['cycles']) + ' balanced cycles after 10 warmups. Every checkpoint must match the starting resource counts, process mappings and path slots. Task counts include the constant temporary observation task.</p>'
+                html += table(['Cycle', 'Free 8K blocks', 'Processes', 'Tasks', 'Paths'], [[v['sequence'], v['metrics']['free_blocks'], v['metrics']['processes'], v['metrics']['tasks'], v['metrics']['paths']] for v in resource['checkpoints']])
             facts = [(key.replace('_', ' '), data[key]) for key in (
                 'passed', 'write_test', 'reopen', 'fat_integrity_checked', 'rbf_integrity_checked',
                 'unrelated_file_preserved', 'random_seed', 'random_operations',
@@ -164,7 +174,7 @@ def generate(artifacts, run, jobs, output):
         key, state = job_name(job), conclusion(job)
         wanted = required_artifacts(job)
         files = [p for p in sources if p.relative_to(artifacts).parts[0] in wanted]
-        body = '<p>' + escape(COVERAGE.get(key, 'Supporting setup job; see its step log for details.')) + '</p>'
+        body = '<p>' + escape(COVERAGE.get(key.removesuffix('-6809').removesuffix('-6309') if not key.startswith('Level One runtime (') else 'level1', 'Supporting setup job; see its step log for details.')) + '</p>'
         job_url = job.get('html_url') or job.get('url') or url
         body += '<p><a href="' + escape(job_url, quote=True) + '">Open job and assertion logs ↗</a> · ' + escape(duration(job)) + '</p>'
         results = [p for p in files if p.name == 'result.json' and p in saved]
@@ -231,7 +241,7 @@ def generate(artifacts, run, jobs, output):
     html += '<h2>What this run actually executed</h2><div class="card table-wrap"><table><thead><tr><th>Job</th><th>Result</th><th>Elapsed</th></tr></thead><tbody>' + overview + '</tbody></table></div>'
     html += '<h2>How to read the evidence</h2><p>A screenshot shows the guest screen at one point. Stronger checks compare file bytes and hashes, inspect module counts and mappings, validate protocol replies, and run independent filesystem checkers. The cards below separate recorded results from descriptions of the configured tests. A green job means its assertions passed, not that every possible case was covered.</p>'
     html += ''.join(cards)
-    html += '<h2>Limits of this evidence</h2><section class="card"><ul><li>Complete-machine runtime tests primarily exercise CoCo 3 Level Two. Builds for CoCo 1/2, Pico-Thing and Corsham do not establish that those systems boot or work on hardware.</li><li>Filesystem integration normally runs on 6809; the OS and selected-game smoke tests cover both 6809 and 6309. The assembled CPU suites exercise specific routines, not every device or whole operating system.</li><li>Only the selected game is boot-tested. Building additional games is not gameplay coverage.</li><li>Fixed cases and replayable seeds are finite samples. They do not prove correctness for all concurrent schedules, media failures, hardware variants, or power loss.</li><li>Extra-unlink checks cover the zero-module-count case; they do not establish per-process ownership of every individual module.</li><li>Negative-control results from earlier development are not silently counted as tests in this run. Review the diagnostic documentation and original output separately.</li></ul></section>'
+    html += '<h2>Limits of this evidence</h2><section class="card"><ul><li>Inspect the job matrix for actual machine coverage in this run. Emulated CoCo 1/2 Level One and CoCo 3 Level Two tests do not establish operation on physical hardware, Pico-Thing or Corsham.</li><li>CPU-qualified integration jobs identify whether 6809 or native 6309 ran; older reports may contain only 6809 integration. The assembled CPU suites exercise specific routines, not every device or whole operating system.</li><li>Only the selected game is boot-tested. Building additional games is not gameplay coverage.</li><li>Fixed cases and replayable seeds are finite samples. They do not prove correctness for all concurrent schedules, media failures, hardware variants, or power loss.</li><li>Two-process cases cover controlled interleavings and stale unlinks; they do not establish per-process ownership of every individual module or every possible schedule.</li><li>Negative-control results from earlier development are not silently counted as tests in this run. Review the diagnostic documentation and original output separately.</li></ul></section>'
     html += '<h2>Raw evidence and reproducibility</h2><p>Download the original artifacts on the <a href="' + escape(url, quote=True) + '">run page</a> for full disk images and large traces. This report bundles reviewable logs, result JSON, screenshots, and small raw records; files over 2 MB and disk images remain in their original artifacts. Links work after extracting the complete report ZIP. Screenshots are also embedded in this HTML for offline viewing.</p><p><a href="evidence-index.json">Evidence inventory and bundled-file SHA-256 hashes</a> · <a href="summary.json">Machine-readable summary</a> · <a href="jobs.json">Job metadata</a> · <a href="run.json">Run metadata</a></p><footer>Generated from job metadata and artifacts for this run. Artifact availability is subject to GitHub retention.</footer></main></body></html>'
     (output / 'index.html').write_text(html)
     markdown = '# Test evidence report\n\n' + verdict + '\n\n' + f'Run: {url}\n\nCommit: `{sha}`\n\nDownload the **test-evidence-report** artifact, extract it, and open **index.html** for screenshots, recorded assertions, integrity logs, seeds, and coverage limits.\n\n'

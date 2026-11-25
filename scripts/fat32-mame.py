@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--disk',type=Path,required=True)
     parser.add_argument('--fat-image',type=Path,required=True)
     parser.add_argument('--fat-boot',action='store_true',help='Remove the floppy OS9Boot and its boot pointer before testing')
+    parser.add_argument('--cpu',choices=('6809','6309'),default='6809')
     parser.add_argument('--mame',default='mame')
     parser.add_argument('--rompath',default=os.environ.get('MAME_ROMPATH',''))
     parser.add_argument('--seconds',type=int,default=400)
@@ -52,7 +53,7 @@ def main():
     source+=(ROOT/'scripts/fat32-root-mame.lua').read_text()
     source+=(ROOT/'scripts/mame-disk-script.lua').read_text()
     lua.write_text(source)
-    command=[args.mame,'coco3','-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
+    command=[args.mame,('coco3h' if args.cpu=='6309' else 'coco3'),'-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
         '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-hard1',str(media),
         '-seconds_to_run',str(args.seconds),'-autoboot_delay','3','-autoboot_script',str(lua),

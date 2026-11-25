@@ -14,7 +14,7 @@ PYTHON ?= python3
 MAME_BINARY ?= mame
 MAME_ROMPATH ?= $(HOME)/Documents/Resources/Computing/mame/roms
 check: $(DSKIMAGE)
-	$(PYTHON) $(NITROS9DIR)/scripts/rbf-mame.py --recipe $(CURDIR) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" $(MAME_TEST_FLAGS)
+	$(PYTHON) $(NITROS9DIR)/scripts/rbf-mame.py --recipe $(CURDIR) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" $(MAME_TEST_FLAGS)
 demo:
 	$(MAKE) check MAME_TEST_FLAGS=--visible
 .PHONY: check demo

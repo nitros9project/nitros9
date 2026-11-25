@@ -190,7 +190,7 @@ jobs:
         if-no-files-found: ignore
 
   filesystem-mame:
-    name: Filesystem integration (${{ matrix.suite }})
+    name: Filesystem integration (${{ matrix.suite }}-${{ matrix.cpu }})
     if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
     needs: [quick, prepare-mame]
     runs-on: ubuntu-24.04
@@ -199,6 +199,7 @@ jobs:
       fail-fast: false
       matrix:
         suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq, module-groups]
+        cpu: [6809, 6309]
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -218,6 +219,7 @@ jobs:
     - name: Run existing filesystem integration suite
       env:
         FILESYSTEM_SUITE: ${{ matrix.suite }}
+        CPU: ${{ matrix.cpu }}
         MAME_ROMPATH: ${{ runner.temp }}/roms
       run: |
         set -o pipefail
@@ -228,7 +230,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v4
       with:
-        name: filesystem-${{ matrix.suite }}-results
+        name: filesystem-${{ matrix.suite }}-${{ matrix.cpu }}-results
         include-hidden-files: true
         path: |
           ${{ runner.temp }}/filesystem-integration/
@@ -243,10 +245,44 @@ jobs:
         retention-days: 14
         if-no-files-found: ignore
 
+  level1-mame:
+    name: Level One runtime (${{ matrix.machine }})
+    if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
+    needs: [quick, prepare-mame]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        machine: [coco, coco2b]
+    steps:
+    - uses: actions/checkout@v5
+    - uses: actions/checkout@v5
+      with:
+        repository: nitros9project/nitros9-languages
+        path: nitros9-languages
+    - uses: ./.github/actions/setup-tools
+    - uses: ./.github/actions/setup-mame
+    - uses: ./.github/actions/setup-mame-roms
+    - name: Boot Level One and verify RBF operations
+      env:
+        MAME_MACHINE: ${{ matrix.machine }}
+        MAME_ROMPATH: ${{ runner.temp }}/roms
+      run: xvfb-run -a make -C recipes/coco/l1_mame_test MAME_MACHINE="$MAME_MACHINE" MAME_ROMPATH="$MAME_ROMPATH" check
+    - name: Upload Level One evidence
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: level1-${{ matrix.machine }}-results
+        include-hidden-files: true
+        path: recipes/coco/l1_mame_test/.l1-test/
+        retention-days: 14
+        if-no-files-found: ignore
+
   test-report:
     name: Test evidence report
     if: ${{ always() && ((github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.suite != 'quick')) }}
-    needs: [quick, build, prepare-mame, mame-smoke, filesystem-cpu, filesystem-mame]
+    needs: [quick, build, prepare-mame, mame-smoke, filesystem-cpu, filesystem-mame, level1-mame]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:

@@ -40,9 +40,9 @@ prepare: libs bootstrap.dsk bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$
 	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py prepare --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS)
 
 check: prepare
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
 ifeq ($(FAT_WRITE),1)
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --reopen --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS)
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --reopen --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS)
 endif
 all: prepare
 .PHONY: prepare check

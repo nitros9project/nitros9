@@ -8,7 +8,7 @@ runs:
       uses: actions/cache/restore@v5
       with:
         path: ${{ runner.temp }}/roms
-        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
+        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812-l1-v1
 
     - name: Download and verify ROM archives
       id: roms
@@ -16,7 +16,7 @@ runs:
       run: |
         mkdir -p "$RUNNER_TEMP/roms"
         cd "$RUNNER_TEMP/roms"
-        for archive in coco3 coco3h coco_fdc; do
+        for archive in coco3 coco3h coco_fdc coco coco2b; do
           if [ ! -s "$archive.zip" ]; then
             curl --ipv4 --fail --location --retry 3 --retry-all-errors \
               --connect-timeout 10 --max-time 60 \
@@ -27,6 +27,8 @@ runs:
         a7e35287874ca75f119ae1aeb565eb5edf4049f3fa733a68c4142b58f2d17c42  coco3.zip
         04b1c352aa16eada6889b80d07d8625bdc7d3d79c77dd229eafb10b878d90c91  coco3h.zip
         d1607d1478123b61f0debbc835bb8497e236872cde406978141beb1c9c729efa  coco_fdc.zip
+        f6dd75c559549b5e10e12b9b2b3dfba07d306417c4077f2ca6a867729c847ca6  coco.zip
+        c7fb1fcca099a776bf019950b444293e1b2e19b446e39e3d8917b8089ebff726  coco2b.zip
         HASHES
 
     - name: Save verified ROM archives
@@ -34,4 +36,4 @@ runs:
       uses: actions/cache/save@v5
       with:
         path: ${{ runner.temp }}/roms
-        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812
+        key: mame-coco-roms-a7e35287874c-04b1c352aa16-d1607d147812-l1-v1

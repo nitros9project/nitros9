@@ -32,5 +32,5 @@ $(MODDIR)/blkdrv: $(DEFSDIR)/blkdrv.d
 $(MODDIR)/pc0: fatdesc.asm makefile | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DFATVHD=1 -DFATBase=0 -DFATLength=131072 -DFATPort=0xFF80
 check: $(DSKIMAGE) $(FAT_IMAGE)
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-mame.py --disk $(DSKIMAGE) --fat-image $(FAT_IMAGE) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-mame.py --disk $(DSKIMAGE) --fat-image $(FAT_IMAGE) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
 .PHONY: check

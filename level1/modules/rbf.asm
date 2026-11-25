@@ -669,6 +669,11 @@ Clos2A0             puls      y
 
 * Generalized return to system
 Rt100Mem            pshs      b,cc      ; preserve error status
+                  IFEQ    Level-1
+* The descriptor can be reused immediately after close, including by SCF.
+* Remove its embedded list link before returning its buffer or descriptor.
+                    lbsr      L0A90
+                  ENDC
                     ldu       PD.BUF,y  ; get sector buffer pointer
                     beq       RtMem2CF  ; none, skip ahead
                     ldd       #$0100    ; get size of sector buffer
