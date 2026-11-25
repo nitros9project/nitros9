@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Verify real Level 2 multi-module unlink mappings, links and physical storage."""
+import importlib.util
 import argparse
 import json
 import os
@@ -63,27 +64,44 @@ def validate(data):
 
 def main():
     p=argparse.ArgumentParser();p.add_argument('--recipe',type=Path,required=True)
+    p.add_argument('--cycles',type=int,default=1000)
+    p.add_argument('--cpu',choices=('6809','6309'),default='6809')
     p.add_argument('--mame',default='mame');p.add_argument('--rompath',default=os.environ.get('MAME_ROMPATH',''))
-    a=p.parse_args();recipe=a.recipe.resolve();root=recipe/'.group-test';root.mkdir(exist_ok=True)
+    a=p.parse_args()
+    if not 1 <= a.cycles <= 10000:p.error('--cycles must be between 1 and 10000')
+    recipe=a.recipe.resolve();root=recipe/'.group-test';root.mkdir(exist_ok=True)
+    (root/'result.json').unlink(missing_ok=True)
     for name in ('cfg','nvram','snap'):(root/name).mkdir(exist_ok=True)
     disk=root/'guest.dsk';shutil.copyfile(recipe/'l2_coco3_module_group_mame_test.dsk',disk)
-    lua='completion_marker="MODULEGROUPPASS"\n'
+    lua='completion_marker="RUNTIMEGROUPSPASS"\n'
     for key,name in [('snapshot_path','screen.png'),('console_path','console.log'),('errors_path','errors.log'),('writes_path','writes.log'),('reads_path','reads.log')]:
         lua+=key+'='+json.dumps(str(root/name))+'\n'
     lua+=(ROOT/'scripts/fat32-root-mame.lua').read_text()+(ROOT/'scripts/mame-disk-script.lua').read_text()
     (root/'run.lua').write_text(lua)
-    command=[a.mame,'coco3','-rompath',a.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
+    command=[a.mame,('coco3h' if a.cpu=='6309' else 'coco3'),'-rompath',a.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
         '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-autoboot_delay','3',
-        '-autoboot_script',str(root/'run.lua'),'-seconds_to_run','300','-sound','none','-video','none','-nothrottle']
-    with (root/'mame.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=360)
+        '-autoboot_script',str(root/'run.lua'),'-seconds_to_run','36000','-sound','none','-video','none','-nothrottle']
+    with (root/'mame.log').open('w') as log:subprocess.run(command,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=3600)
     console=(root/'console.log').read_bytes();(root/'console.txt').write_bytes(console.replace(b'\r',b'\n'))
-    assert b'MODULEGROUPPASS' in console,('guest regression failed',str(root/'console.txt'))
+    assert all(marker in console for marker in (b'MODULEGROUPPASS',b'MULTIPROCESSPASS',b'RESOURCELEAKPASS',b'RUNTIMEGROUPSPASS')),('guest regression failed',str(root/'console.txt'))
     report=root/'group.report';report.unlink(missing_ok=True)
     subprocess.run(['os9','copy',str(disk)+',group.report',str(report)],check=True,capture_output=True)
     cases=validate(report.read_bytes())
-    (root/'result.json').write_text(json.dumps({'passed':True,'cases':cases},indent=2)+'\n')
-    print('PASS: two distinct modules in one file; single/multiple blocks; both unlink orders and extra unlink; resident preservation/dynamic reclamation; artifacts:',root)
+    spec=importlib.util.spec_from_file_location('runtime_evidence',ROOT/'scripts/module-runtime-evidence.py')
+    evidence=importlib.util.module_from_spec(spec);spec.loader.exec_module(evidence)
+    def extract(name):
+        target=root/name;target.unlink(missing_ok=True)
+        subprocess.run(['os9','copy',str(disk)+','+name,str(target)],check=True,capture_output=True)
+        return target.read_bytes()
+    processes=evidence.multiprocess(extract('parent.bin'),[extract('child1.bin'),extract('child2.bin')])
+    assert b'leak.tmp' not in subprocess.run(['os9','dir',str(disk)+','],check=True,capture_output=True).stdout.lower()
+    resources=evidence.resources(extract('leak.bin'),a.cycles)
+    spec_disk=importlib.util.spec_from_file_location('disk_evidence',ROOT/'scripts/rbf-disk-evidence.py')
+    disk_evidence=importlib.util.module_from_spec(spec_disk);spec_disk.loader.exec_module(disk_evidence)
+    disk_evidence.check(recipe/('l2_coco3_module_group_mame_test.dsk' if 'module-group' in Path(__file__).name else 'l1_coco_l1_mame_test.dsk'),disk,root)
+    (root/'result.json').write_text(json.dumps({'passed':True,'cpu':a.cpu,'cases':cases,'multiprocess':processes,'resources':resources},indent=2)+'\n')
+    print('PASS: synchronized two-process ownership; measured resource stability over',a.cycles,'cycles; two distinct modules in one file; single/multiple blocks; both unlink orders and extra unlink; resident preservation/dynamic reclamation; artifacts:',root)
 
 
 if __name__=='__main__':main()

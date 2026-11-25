@@ -461,13 +461,14 @@ def run(args):
     scratch = share / 'rfmtest/data/scratch'
     if scratch.exists():
         shutil.rmtree(scratch)
+    machine = 'coco3h' if args.cpu == '6309' else 'coco3'
     cfg = root / 'cfg'
     cfg.mkdir(exist_ok=True)
     xml = ET.Element('mameconfig', version='10')
-    inputs = ET.SubElement(ET.SubElement(xml, 'system', name='coco3'), 'input')
+    inputs = ET.SubElement(ET.SubElement(xml, 'system', name=machine), 'input')
     ET.SubElement(inputs, 'port', tag=':beckerport', type='CONFIG', mask='1', defvalue='0', value='1')
     ET.SubElement(inputs, 'port', tag=':dwsock:drivewire_port', type='CONFIG', mask='65535', defvalue='65504', value=str(args.port))
-    ET.ElementTree(xml).write(cfg / 'coco3.cfg')
+    ET.ElementTree(xml).write(cfg / (machine + '.cfg'))
     lua = root / 'capture.lua'
     auto_command = '' if args.interactive or args.input_probe else 'shell </dd/rfmauto\n'
     probe_commands = {2700: 'load utilpak1\n', 3600: 'chd /y0/rfmtest/data\n',
@@ -526,7 +527,7 @@ end)
                     fixture.handle(conn)
         thread = threading.Thread(target=serve, daemon=True)
         thread.start()
-        command = [args.mame, 'coco3', '-rompath', args.rompath, '-skip_gameinfo',
+        command = [args.mame, machine, '-rompath', args.rompath, '-skip_gameinfo',
                    '-cfg_directory', str(cfg), '-nvram_directory', str(root/'nvram'),
                    '-snapshot_directory', str(root/'snap'), '-ram', '512K',
                    '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525dd',
@@ -584,6 +585,7 @@ if __name__ == '__main__':
     launch = sub.add_parser('run')
     launch.add_argument('--root', type=Path, required=True)
     launch.add_argument('--disk', type=Path, required=True)
+    launch.add_argument('--cpu', choices=('6809', '6309'), default='6809')
     launch.add_argument('--mame', default='mame')
     launch.add_argument('--rompath', required=True)
     launch.add_argument('--port', type=int, choices=range(65500, 65510), default=65504)

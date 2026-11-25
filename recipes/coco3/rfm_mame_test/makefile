@@ -42,13 +42,13 @@ prepare: $(DSKIMAGE)
 # Opens the CoCo 3 GUI and starts the small local protocol fixture.
 run: $(DSKIMAGE)
 	$(PYTHON) $(NITROS9DIR)/scripts/rfm-mame.py run --root $(TEST_ROOT) \
-		--disk $(DSKIMAGE) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" \
+		--disk $(DSKIMAGE) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" \
 		--port $(DW_PORT) --seconds $(TEST_SECONDS) $(IRQ_STRESS_FLAG) --interactive
 
 # Same guest commands, no display; succeeds only after host byte verification.
 check: $(DSKIMAGE)
 	$(PYTHON) $(NITROS9DIR)/scripts/rfm-mame.py run --root $(TEST_ROOT) \
-		--disk $(DSKIMAGE) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" \
+		--disk $(DSKIMAGE) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" \
 		--port $(DW_PORT) --seconds $(TEST_SECONDS) $(IRQ_STRESS_FLAG)
 
 .PHONY: prepare run check

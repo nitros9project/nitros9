@@ -118,6 +118,10 @@ def render(report, output):
         if name.startswith('Filesystem integration ('):
             kind = name[len('Filesystem integration ('):-1]
             artifacts = ['filesystem-' + kind + '-results']
+            kind = kind.removesuffix('-6809').removesuffix('-6309')
+        elif name.startswith('Level One runtime ('):
+            kind = 'level1'
+            artifacts = ['level1-' + name[len('Level One runtime ('):-1] + '-results']
         elif name == 'Filesystem CPU regressions':
             kind, artifacts = 'cpu', ['filesystem-cpu-results']
         elif name == 'MAME smoke tests':
@@ -131,6 +135,8 @@ def render(report, output):
             story.append(p('Build coverage includes CoCo 1/2 Level 1, CoCo 3 Level 2 on both CPUs, Pico-Thing variants, Corsham ROM and selected game images. This is compilation/image-build evidence, not proof that every platform boots.'))
         elif kind == 'cpu':
             story.append(p('Assembled filesystem routines execute on an MC6809 emulator. Cases include injected I/O failures, boundary conditions and retries. Seeded Level 1/2 operations are compared with host-side contents and checked by an independent FAT checker.'))
+        elif kind == 'level1':
+            story.append(p('Level One boots on the named CoCo machine and checks directory creation, 513-byte data, a sector-boundary seek, relative reopen, EOF and deletion. The host independently verifies the resulting file.'))
         elif kind == 'module-groups':
             story.append(p('Two distinct modules share single-block, multi-block or resident groups. Both unlink orders are exercised. The guest calls the survivor after the valid unlink and the extra unlink; the host checks counts, mappings and physical storage.'))
         elif kind == 'rbf':
@@ -160,6 +166,13 @@ def render(report, output):
                                      ' -> '.join(f'{s["dat"][slot]:04X}' for s in states)])
                 story.append(table(['Group', 'Order', 'P$Links', 'DAT entry (hex)'], rows, [88, 48, 144, 248]))
                 story.append(p('Stages: both linked, first unlink, extra unlink, final unlink. DAT value 333E means an unmapped slot.', 'SmallText'))
+                if data.get('multiprocess'):
+                    story.append(p('Two-process ownership: both release orders passed. The survivor executes after the parent releases its mapping and attempts stale unlinks, including while the child holds a new reference to that module.'))
+                    story.append(table(['Case', 'Parent PID', 'Child PID', 'Child references'], [[c['case'], c['parent'][1]['pid'], c['child'][0]['pid'], '1 -> 1 -> 2 -> 1 -> 0'] for c in data['multiprocess']], [60,100,100,268]))
+                if data.get('resources'):
+                    resource=data['resources']
+                    story.append(p(str(resource['cycles'])+' balanced cycles after 10 warmups. Every checkpoint must preserve all four resource counts, the process DAT, mapping references and path slots. Tasks include a constant temporary observation task.'))
+                    story.append(table(['Cycle', 'Free 8K blocks', 'Processes', 'Tasks', 'Paths'], [[v['sequence'],v['metrics']['free_blocks'],v['metrics']['processes'],v['metrics']['tasks'],v['metrics']['paths']] for v in resource['checkpoints']], [80,148,100,100,100]))
         elif kind == 'cpu':
             aggregate = next((e for e in entries if e['path'].endswith('/random/result.json')), None)
             if aggregate:
@@ -217,10 +230,10 @@ def render(report, output):
     heading('What this evidence does not establish')
     for line in [
         'Complete-machine runtime coverage primarily exercises CoCo 3 Level Two. Builds for other machines do not prove hardware behavior or boot success.',
-        'Filesystem integration normally runs on 6809. OS/game smoke tests cover both CPUs; routine-level CPU tests are not whole-system tests.',
+        'CPU-qualified integration job names identify 6809 and native 6309 runs. Older runs may contain only 6809 integration.',
         'Only the selected game is boot-tested. Building other games is not gameplay coverage.',
         'Finite cases and recorded seeds do not prove correctness for every concurrent schedule, media failure, hardware variant or power-loss condition.',
-        'Duplicate-unlink tests cover a zero global module count, not per-process ownership tracking of individual modules.',
+        'Controlled two-process cases exercise stale unlinks while another process holds the group. They do not establish ownership tracking of individual modules or every possible interleaving.',
         'Screenshots show one moment. Use recorded byte/hash comparisons, counters, protocol assertions and independent filesystem checkers to assess correctness.',
         'Earlier negative controls are documented separately; they are not counted as tests rerun here.',
     ]:

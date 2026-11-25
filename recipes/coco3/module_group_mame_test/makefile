@@ -3,7 +3,7 @@ LEVEL = 2
 TERM_COLS = 80
 RECIPE = coco3_module_group_mame_test
 STARTUP = startup
-CMDS_BASE = grfdrv shell groupcheck
+CMDS_BASE = grfdrv shell echo groupcheck multiproc grpworker leakcheck
 RBF = rbf.mn rb1773.dr ddd0_$(TRACKS)d.dd d0_$(TRACKS)d.dd
 SCF = scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) $(TERM_WIN_DT) w.dw
 PIPE =
@@ -24,9 +24,18 @@ PYTHON ?= python3
 MAME_BINARY ?= mame
 MAME_ROMPATH ?= $(HOME)/Documents/Resources/Computing/mame/roms
 check: $(DSKIMAGE)
-	$(PYTHON) $(NITROS9DIR)/scripts/module-group-mame.py --recipe $(CURDIR) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)"
+	$(PYTHON) $(NITROS9DIR)/scripts/module-group-mame.py --recipe $(CURDIR) --cycles $(LEAK_CYCLES) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)"
 .PHONY: check
 
 # Manual diagnostic for an original Tandy Level Two disk; not run at boot.
 $(MODDIR)/dunlink: tandy-double-unlink.asm | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@
+
+LEAK_CYCLES ?= 1000
+$(addprefix $(MODDIR)/,multiproc grpworker leakcheck): runtime-data.asm runtime-support.asm
+# Rebuild when the requested stress length changes, without touching other modules.
+.PHONY: force-cycles
+cycles.config: force-cycles
+	@printf '%s\n' '$(LEAK_CYCLES)' > $@.tmp; cmp -s $@.tmp $@ || cp $@.tmp $@; rm -f $@.tmp
+$(MODDIR)/leakcheck: leakcheck.asm cycles.config | $(MODDIR)
+	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DLEAK_CYCLES=$(LEAK_CYCLES)

@@ -31,10 +31,11 @@ choose a `suite`:
 | `quick` | Automatic checks only |
 | `full` (default) | Quick checks, then all product builds and representative games |
 | `mame` | Quick checks, then boot both CPUs and the selected game in MAME |
-| `all` | Quick checks, then both full builds and MAME |
+| `filesystems` | CPU regressions, all filesystem integrations on both CPUs, and CoCo 1/2 Level One runtime |
+| `all` | Quick checks, full builds, OS/game smoke and all filesystem/runtime tests |
 
-The `game` input applies to the MAME suite. Heavy suites run only when
-requested; ordinary pushes do not start them. Job logs are available from
+The `game` input applies to the MAME suite. The full suite runs nightly on
+`main`; heavy suites can also be requested manually. Ordinary pushes run quick checks. Job logs are available from
 the workflow run, and MAME diagnostics remain available as artifacts.
 
 Run the same quick checks locally from a checkout with LWTOOLS, ToolShed,
@@ -84,3 +85,52 @@ gh api --paginate --slurp \
 python3 scripts/ci-test-report.py --artifacts artifacts \
   --run-json run.json --jobs-json jobs.json --output report
 ```
+
+## Runtime coverage
+
+Filesystem integration has eight independent suites, each built and booted on
+both 6809 (`coco3`) and native 6309 (`coco3h`): PCF write, read-only root,
+floppy access, FAT boot, RBF commands, RFM, RFM interrupt stress, and module
+groups. CPU-qualified job and artifact names keep their evidence separate.
+
+Two additional jobs boot a 64K CoCo 1 (`coco`) and CoCo 2 (`coco2b`) with
+Level One. A guest program creates a directory, writes and rereads 513 known
+bytes, seeks across a sector boundary, reopens through a relative name, checks
+EOF, and creates/deletes a temporary file. The host independently checks the
+entire resulting file, the completion file, and disk allocations. This also
+regresses the stale Level One RBF open-file list left behind on close, which
+could hang a later disk open after a descriptor was reused.
+
+The module-group suite adds synchronized parent/child processes sharing a
+multi-block module file. It runs both release orders, executes the survivor,
+and tries a stale parent unlink after the child links the parent's former
+module. Captured process descriptors establish separate process IDs, mapping
+counts and physical blocks at each step; the host verifies final reclamation
+and removal of the exited child.
+
+A second guest runs 10 warmup cycles followed by **1,000 measured cycles**.
+Each cycle loads and links a group, creates/writes/closes a file, forks a child
+which links/executes/reads/unlinks it, waits for the child, executes the parent's
+modules again, unlinks them and deletes the file. Alternating groups occupy one
+or two physical blocks. The baseline, every 100 cycles and final checkpoint
+must have identical free 8K block, process, task and active-path counts, plus
+unchanged parent mappings and path slots. Snapshots use temporary F$CpyMem
+mappings; task counts include the same temporary observer at each checkpoint.
+An independent disk check rejects new orphan, duplicate or missing allocations.
+The HTML and PDF reports show the measured checkpoints and two-process cases.
+
+These are finite controlled schedules, not proof against every race or resource
+failure. Level One coverage currently uses 6809 and the standard floppy driver;
+other devices and physical hardware still need their own runtime coverage.
+
+Local examples (provide the language checkout and verified MAME ROMs):
+
+```sh
+CPU=6309 MAME_ROMPATH=/path/to/roms bash scripts/ci-filesystems-mame.sh module-groups
+make -C recipes/coco/l1_mame_test MAME_MACHINE=coco MAME_ROMPATH=/path/to/roms check
+make -C recipes/coco/l1_mame_test MAME_MACHINE=coco2b MAME_ROMPATH=/path/to/roms check
+```
+
+Use separate clean recipe outputs when switching CPU variants locally. Nightly
+matrix jobs each start in their own checkout. `LEAK_CYCLES` can shorten a local
+debug run; nightly CI keeps the 1,000-cycle default and records the actual count.
