@@ -212,7 +212,7 @@ def verify(args,root,logs,disk,media,hashes):
     if args.write_test and not args.reopen:print('PASS: PCF create/write/append/copy/delete; recursive deldir removes nested files and empty directories; attr/dcheck/pxd/pwd rejected without disk writes',flush=True)
     if args.write_test and not args.reopen:print(f'PASS: {args.steps} randomized operations (seed {args.seed}) match the independent host reference',flush=True)
     if args.reopen:print('PASS: renamed files/directories, nested directories and contents persist across a fresh MAME boot; image unchanged',flush=True)
-    print('PASS: FAT32 OS9Boot + /DD, disk-loaded SysGo/shell/platform console commands, startup and cmp; bootstrap unchanged',flush=True)
+    print('PASS: FAT32 OS9Boot + /DD, disk-loaded SysGo, shell and commands, startup and cmp; bootstrap unchanged',flush=True)
 
 def main():
     p=argparse.ArgumentParser()
