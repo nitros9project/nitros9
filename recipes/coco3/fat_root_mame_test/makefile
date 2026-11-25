@@ -1,6 +1,7 @@
 # Floppy kernel track only; OS9Boot, /DD, commands and startup are FAT32 files.
 override NITROS9DIR := $(abspath ../../..)
-LEVEL = 2
+LEVEL ?= 2
+TEST_FAT_ROOT = 1
 TERM_COLS = 80
 RECIPE = coco3_fat_root_mame_test
 STARTUP =
@@ -8,10 +9,12 @@ RECIPE_OUTPUTS = bootstrap.dsk
 RBF =
 PIPE =
 SCF = scf.mn vtio.dr co3hires.sb snddrv_cc3.sb joydrv_joy.sb $(TERM_IO) $(TERM_WIN_DT) w.dw
-KERNEL_TRACK = $(REL) boot_fat32 krn
+KERNEL_TRACK = $(if $(filter 1,$(LEVEL)),rel krn krnp2 init boot_fat32,$(REL) boot_fat32 krn)
 BOOTMODS_EXTRA = pcf blkdrv llcocovhd dd_fat
 CMDS_BASE = grfdrv shell mdir dir list copy cmp
-include ../coco3.mak
+include ../../support/filesystem-test-platform.mak
+include $(TEST_PLATFORM_MAKE)
+include ../../support/filesystem-test-rules.mak
 vpath %.asm $(NITROS9DIR)/level1/coco1/modules
 .DEFAULT_GOAL := prepare
 PYTHON ?= python3
@@ -36,13 +39,15 @@ bootstrap.dsk: kernelfile
 	$(OS9GEN) $@ -t=$(KERNELFILE)
 
 prepare: libs bootstrap.dsk bootfile $(MODDIR)/sysgo_dd $(addprefix $(MODDIR)/,$(CMDS)) startup | $(SYSDIR)
+ifeq ($(LEVEL),2)
 	$(MAKE) -C $(SYSDIR) -f $(SYS_RECIPE) --no-print-directory
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py prepare --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS)
+endif
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py prepare $(TEST_MACHINE_FLAGS) --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS)
 
 check: prepare
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --cpu $(CPU) $(TEST_MACHINE_FLAGS) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
 ifeq ($(FAT_WRITE),1)
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --reopen --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS)
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-root-mame.py run --recipe $(CURDIR) --root $(ROOT_TEST) $(ROOT_TEST_FLAGS) --reopen --cpu $(CPU) $(TEST_MACHINE_FLAGS) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) --fsck "$(FAT_CHECK)" $(MAME_TEST_FLAGS)
 endif
 all: prepare
 .PHONY: prepare check

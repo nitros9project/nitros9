@@ -444,7 +444,17 @@ def resident_modules(bootfile):
     return names
 
 def run(args):
+    root=args.root.resolve()
     resident_modules(args.disk.resolve().parent / 'bootfile')
+    # Install identical case commands, with only the level-specific preload setup.
+    recipe=args.disk.resolve().parent
+    auto=(recipe/'rfmauto').read_text().replace('shell </dd/rfmcheck','r=</dd/rfmcheck').replace('link shell\n','')
+    if args.level==1:
+        auto=auto.replace('load utilpak1','load echo').replace('keyrpt 0 0</1','')
+    auto_file=root/'rfmauto';auto_file.write_bytes(auto.replace('\n','\r').encode())
+    for source,name in [(recipe/'rfmcheck','rfmcheck'),(auto_file,'rfmauto')]:
+        subprocess.run(['os9','copy','-r',str(source),str(args.disk.resolve())+','+name],check=True,capture_output=True)
+
     print('Bootfile contains RFM, rfmdrv, Y0 and DWIO', flush=True)
     root = args.root.resolve()
     expected = json.loads((root / 'manifest.json').read_text())
@@ -461,7 +471,7 @@ def run(args):
     scratch = share / 'rfmtest/data/scratch'
     if scratch.exists():
         shutil.rmtree(scratch)
-    machine = 'coco3h' if args.cpu == '6309' else 'coco3'
+    machine = args.machine or ('coco2b' if args.level==1 else ('coco3h' if args.cpu=='6309' else 'coco3'))
     cfg = root / 'cfg'
     cfg.mkdir(exist_ok=True)
     xml = ET.Element('mameconfig', version='10')
@@ -470,7 +480,7 @@ def run(args):
     ET.SubElement(inputs, 'port', tag=':dwsock:drivewire_port', type='CONFIG', mask='65535', defvalue='65504', value=str(args.port))
     ET.ElementTree(xml).write(cfg / (machine + '.cfg'))
     lua = root / 'capture.lua'
-    auto_command = '' if args.interactive or args.input_probe else 'shell </dd/rfmauto\n'
+    auto_command = '' if args.interactive or args.input_probe else 'r=</dd/rfmauto\n'
     probe_commands = {2700: 'load utilpak1\n', 3600: 'chd /y0/rfmtest/data\n',
                       4200: 'd', 4500: 'ir\n', 4800: 'echo AFTER\n'} if args.input_probe else {}
     irq_lua = '''
@@ -529,7 +539,7 @@ end)
         thread.start()
         command = [args.mame, machine, '-rompath', args.rompath, '-skip_gameinfo',
                    '-cfg_directory', str(cfg), '-nvram_directory', str(root/'nvram'),
-                   '-snapshot_directory', str(root/'snap'), '-ram', '512K',
+                   '-snapshot_directory', str(root/'snap'), '-ram', ('64K' if args.level==1 else '512K'),
                    '-ext', 'fdc,bios=v11', '-ext:fdc:wd17xx:0', '525dd',
                    '-seconds_to_run', str(args.seconds), '-flop1', str(args.disk.resolve()), '-autoboot_delay', '3', '-autoboot_script', str(lua)]
         if not args.interactive:
@@ -585,6 +595,8 @@ if __name__ == '__main__':
     launch = sub.add_parser('run')
     launch.add_argument('--root', type=Path, required=True)
     launch.add_argument('--disk', type=Path, required=True)
+    launch.add_argument('--level',type=int,choices=(1,2),default=2)
+    launch.add_argument('--machine',choices=('coco','coco2b','coco3','coco3h'))
     launch.add_argument('--cpu', choices=('6809', '6309'), default='6809')
     launch.add_argument('--mame', default='mame')
     launch.add_argument('--rompath', required=True)

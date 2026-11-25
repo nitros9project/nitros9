@@ -48,21 +48,21 @@ def prepare(args):
     assert {'pcf','blkdrv'}<=module_names(boot,lowercase=False),'runtime module names must be lowercase'
     assert 'blkdev' not in names
     assert not names&{'rbf','rb1773','d0','sysgo','shell','grfdrv'},names
-    commands=COMMANDS+(('makdir','del','deldir','attr','dcheck','pwd','pxd','pcfshare','pcfrmdir','rename','pcfren') if args.write_test else ())
+    commands=tuple(n for n in COMMANDS if args.level==2 or n!='grfdrv')+(('echo','load') if args.level==1 else ())+(('makdir','del','deldir','attr','dcheck','pwd','pxd','pcfshare','pcfrmdir','rename','pcfren') if args.write_test else ())
     for name in commands:shutil.copyfile(recipe/'.mods'/name,stage/'CMDS'/name.upper())
     shutil.copyfile(recipe/'.mods/sysgo_dd',stage/'SYSGO')
     lines=(recipe/'commands').read_text().splitlines()
-    startup=(recipe/'startup').read_text()
+    startup=('load echo\n' if args.level==1 else '')+(recipe/'startup').read_text()
     script_names=['/TEST.CMD']
     if args.write_test:
         lines=lines[:-1]+(root/'random-commands').read_text().splitlines()+['echo DONE>/dd/testdone']+lines[-1:]
         disk_script.answers(stage)
         (stage/'REOPEN.CMD').write_bytes(disk_script.script((recipe/'commands-reopen').read_text().splitlines()))
-        # Replace the startup shell: do not retain its 2 KiB PCF script path
-        # while recursive deldir and the parent/child checks allocate paths.
-        startup+='if -r /dd/testdone\nex shell /dd/reopen.cmd\nelse\nex shell /dd/test.cmd\nendif\n'
+        # Redirect this shell to the case script, closing its startup input.
+        # Avoid another interpreter and PCF path while children allocate paths.
+        startup+='if -r /dd/testdone\nr=</dd/reopen.cmd\nelse\nr=</dd/test.cmd\nendif\n'
         script_names+=['/REOPEN.CMD','/CANCEL.IN','/DELETE.IN']
-    else:startup+='shell /dd/test.cmd\n'
+    else:startup+='r=</dd/test.cmd\n'
     (stage/'TEST.CMD').write_bytes(disk_script.script(lines))
     (stage/'STARTUP').write_bytes(startup.replace('\n','\r').encode())
     for name in ('stdfonts','stdptrs','errmsg','helpmsg','password','motd'):
@@ -110,8 +110,8 @@ def run(args):
     lua+=(ROOT/'scripts/mame-disk-script.lua').read_text()
     (logs/'run.lua').write_text(lua)
     seconds=args.seconds
-    cmd=[args.mame,('coco3h' if args.cpu=='6309' else 'coco3'),'-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
-        '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
+    cmd=[args.mame,(args.machine or ('coco2b' if args.level==1 else ('coco3h' if args.cpu=='6309' else 'coco3'))),'-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
+        '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram',('64K' if args.level==1 else '512K'),
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-hard1',str(media),
         '-autoboot_delay','3','-autoboot_script',str(logs/'run.lua'),'-seconds_to_run',str(seconds),
         '-sound','none','-nothrottle']
@@ -127,7 +127,7 @@ def run(args):
     console=(logs/'console.log').read_bytes()
     (logs/'console.txt').write_bytes(console.replace(b'\r',b'\n'))
     startup=console.split(b'Shell+')[0]
-    assert b'FAT32STARTUPDONE' in startup and b'Module Directory' in startup,'startup did not finish before the interactive shell'
+    assert b'FAT32STARTUPDONE' in startup and b'module directory' in startup.lower(),'startup did not finish before the interactive shell'
     errors=[int(n) for n in (logs/'errors.log').read_text().splitlines()]
     if args.reopen:
         assert errors==[],('reopen errors',errors)
@@ -192,7 +192,7 @@ def run(args):
         assert set(records)<=reads,f'file was not fully read from VHD: {name}'
         verified_files.append(name)
     if args.write_test:fat_check.check(media,logs/'fsck.log',args.fsck)
-    (logs/'result.json').write_text(json.dumps({'passed':True,'cpu':args.cpu,'resident':manifest['resident'],
+    (logs/'result.json').write_text(json.dumps({'passed':True,'cpu':args.cpu,'level':args.level,'machine':args.machine,'resident':manifest['resident'],
         'loaded_files':verified_files,'floppy_sha256':hashes[0],'fat32_sha256':digest(media),'write_test':args.write_test,'reopen':args.reopen,'errors':errors,
         'non_rbf_rejections':errors.count(249) if args.write_test else 0,
         'disk_scripts':True,
@@ -209,12 +209,14 @@ def run(args):
     if args.write_test and not args.reopen:print('PASS: PCF create/write/append/copy/delete; recursive deldir removes nested files and empty directories; attr/dcheck/pxd/pwd rejected without disk writes',flush=True)
     if args.write_test and not args.reopen:print(f'PASS: {args.steps} randomized operations (seed {args.seed}) match the independent host reference',flush=True)
     if args.reopen:print('PASS: renamed files/directories, nested directories and contents persist across a fresh MAME boot; image unchanged',flush=True)
-    print('PASS: FAT32 OS9Boot + /DD, disk-loaded SysGo/shell/GrfDrv/commands, startup and cmp; bootstrap unchanged',flush=True)
+    print('PASS: FAT32 OS9Boot + /DD, disk-loaded SysGo/shell/platform console commands, startup and cmp; bootstrap unchanged',flush=True)
 
 def main():
     p=argparse.ArgumentParser()
     p.add_argument('action',choices=('prepare','run'));p.add_argument('--recipe',type=Path,required=True)
     p.add_argument('--root',type=Path,required=True);p.add_argument('--mame',default='mame')
+    p.add_argument('--level',type=int,choices=(1,2),default=2)
+    p.add_argument('--machine',choices=('coco','coco2b','coco3','coco3h'))
     p.add_argument('--cpu',choices=('6809','6309'),default='6809')
     p.add_argument('--rompath',default=os.environ.get('MAME_ROMPATH',''));p.add_argument('--seconds',type=int,default=260)
     p.add_argument('--write-test',action='store_true')

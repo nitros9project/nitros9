@@ -199,7 +199,7 @@ jobs:
         if-no-files-found: ignore
 
   filesystem-mame:
-    name: Filesystem integration (${{ matrix.suite }}-${{ matrix.cpu }})
+    name: Filesystem integration (${{ matrix.suite }}-${{ matrix.platform }})
     if: (github.event_name == 'schedule' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && (inputs.suite == 'filesystems' || inputs.suite == 'all'))
     needs: [quick, prepare-mame]
     runs-on: ubuntu-24.04
@@ -207,8 +207,13 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq, module-groups]
-        cpu: [6809, 6309]
+        suite: [pcf-write, pcf-readonly, pcf-floppy, pcf-boot, rbf, rfm, rfm-irq]
+        platform: [l1-coco, l1-coco2b, l2-6809, l2-6309]
+        include:
+          - suite: module-groups
+            platform: l2-6809
+          - suite: module-groups
+            platform: l2-6309
     steps:
     - name: Checkout
       uses: actions/checkout@v5
@@ -228,7 +233,7 @@ jobs:
     - name: Run existing filesystem integration suite
       env:
         FILESYSTEM_SUITE: ${{ matrix.suite }}
-        CPU: ${{ matrix.cpu }}
+        FILESYSTEM_PLATFORM: ${{ matrix.platform }}
         MAME_ROMPATH: ${{ runner.temp }}/roms
       run: |
         set -o pipefail
@@ -239,7 +244,7 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v6
       with:
-        name: filesystem-${{ matrix.suite }}-${{ matrix.cpu }}-results
+        name: filesystem-${{ matrix.suite }}-${{ matrix.platform }}-results
         include-hidden-files: true
         path: |
           ${{ runner.temp }}/filesystem-integration/

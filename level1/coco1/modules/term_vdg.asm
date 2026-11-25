@@ -49,7 +49,11 @@ prn3                set       Black.              border color
                     fcb       $01                 echo:0=no echo
                     fcb       $01                 auto line feed:0=off
                     fcb       $00                 end of line null count
+                    ifdef     NOPAUSE
+                    fcb       $00                 unattended test console
+                    else
                     fcb       $01                 pause:0=no end of page pause
+                    endc
                     fcb       szy                 lines per page
                     fcb       C$BSP               backspace character
                     fcb       C$DEL               delete line character

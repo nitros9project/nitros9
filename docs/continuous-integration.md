@@ -88,8 +88,8 @@ python3 scripts/ci-test-report.py --artifacts artifacts \
 
 ## Runtime coverage
 
-Filesystem integration has eight independent suites, each built and booted on
-both 6809 (`coco3`) and native 6309 (`coco3h`): PCF write, read-only root,
+The Level Two integrations are built and booted on both
+6809 (`coco3`) and native 6309 (`coco3h`): PCF write, read-only root,
 floppy access, FAT boot, RBF commands, RFM, RFM interrupt stress, and module
 groups. CPU-qualified job and artifact names keep their evidence separate.
 
@@ -145,3 +145,34 @@ contact the ROM download site. The artifact lasts one day; the reusable cache
 is independent of artifact retention. If GitHub evicts the cache, only the
 preparation job needs to fetch the ROMs again. Incomplete or incorrect downloads
 are never installed as verified archives.
+
+## One filesystem suite across levels
+
+Seven filesystem integrations use the same recipes, guest command files,
+fixtures and host assertions on all four runtime profiles: `l1-coco`,
+`l1-coco2b`, `l2-6809` and `l2-6309`. These cover RBF commands, PCF read-only
+root, PCF through a floppy boot, FAT boot, PCF writes/reopen/seeded operations,
+RFM and RFM interrupt stress. Nightly `main` and manual filesystem/all runs
+execute this full matrix. The small Level One probe remains an additional
+regression, not a replacement for these suites.
+
+Only boot/device details vary: Level One uses a 64K CoCo 1/2 with a VDG
+console; Level Two uses a 512K CoCo 3. The test console disables page pauses.
+The test SysGo starts the case shell directly, and the shell switches its input
+to the case file instead of retaining extra interpreters and PCF paths. Level
+One stores shell helpers separately and preloads Echo so changing execution
+directory does not make progress commands unavailable. The same operations,
+content comparisons, expected rejection codes and read-only checks remain in
+force. FAT boot uses Level One's established scratch page and memory allocator;
+the loader's complete positive/negative CPU cases run for both levels.
+
+The Level Two DAT mapping/resource suite remains Level Two-specific: Level One
+has no DAT mappings. It is separate from the shared filesystem matrix. Native
+6309 Level One is not currently a runtime profile.
+
+To select a profile, set `FILESYSTEM_PLATFORM` when running
+`scripts/ci-filesystems-mame.sh`; the old `CPU=6809/6309` selection defaults to
+the corresponding Level Two profile. Use a fresh checkout or clean recipe
+outputs when switching profiles locally. Job names, artifacts and reports
+identify the level and machine, rather than presenting a basic boot probe as
+full filesystem coverage.

@@ -102,7 +102,13 @@ AutoExPr            fcc       ""
 AutoExPrL           equ       *-AutoExPr
 
                     ifeq      ROM
-Startup             fcc       "startup -p"
+Startup             equ       *
+                    ifdef     TEST_STARTUP
+* Read the test script in this shell, without forking another interpreter.
+                    fcc       "r=</dd/startup"
+                    else
+                    fcc       "startup -p"
+                    endc
                     fcb       C$CR
 StartupL            equ       *-Startup
                     endc

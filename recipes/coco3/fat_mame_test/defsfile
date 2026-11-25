@@ -1,4 +1,8 @@
+ ifdef TEST_LEVEL
+Level equ TEST_LEVEL
+ else
 Level equ 2
+ endc
  use os9.d
  use scf.d
  use rbf.d
