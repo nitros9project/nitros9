@@ -1,5 +1,5 @@
 * FAT32 OS9Boot loader for the CoCo VHD interface.
-* CoCo Level 2 only: exactly $1D0 bytes, including header and CRC.
+* CoCo Levels One and Two: exactly $1D0 bytes, including header and CRC.
 * FATBase is the volume's 512-byte LBA; no partition-table scan is performed.
 * Supports FAT #0, one/two FATs, 512-byte sectors and fragmented root/file chains.
 * Checks the signature, FAT32 BPB layout/version, FAT count, regular-file type,
@@ -7,12 +7,13 @@
 * Not a complete filesystem validator: media must have consistent geometry and
 * chains. A cycle detector and LFN/subdirectory boot paths are not provided.
 *
-* U anchors a private stack frame. The first record buffer is $0800, the later
-* system-stack page (D.SysStk=$0900), unused while the early kernel S is below it.
-* $0900 contains D.SysMem and must never be used as a second DMA buffer.
-* After F$BtMem, DMA goes directly into successive page-aligned output pages.
+* U anchors a private stack frame. Level One uses the existing boot_common
+* scratch page at $0500, above its system stack and module directory. Level Two
+* uses $0800, below its later system stack. $0900 contains D.SysMem and must
+* never be used as a second Level Two DMA buffer.
+* After the boot-memory allocation, DMA goes directly into successive page-aligned output pages.
 * A FAT read can use the next unfilled page: the following data read replaces it.
-* F$BtMem returns the rounded allocation in D, used as the page count.
+* F$SRqMem (Level One) or F$BtMem (Level Two) returns rounded allocation in D.
 * The exact file size and image pointer are saved below the private frame;
 * Loaded pops X then D. Error unwinds any nested calls directly from U.
 * Returns X=image, D=exact size, carry clear; otherwise B=error and carry set.
@@ -29,9 +30,6 @@ DEVADDR             equ       $FF80     ; define the assembly constant
                   ENDC            ; conditional assembly
                     ifndef    DISKNUM   ; conditional assembly
 DISKNUM             equ       0         ; define the assembly constant
-                  ENDC            ; conditional assembly
-                  IFNE    Level-2 ; conditional assembly
-                    error     FAT32     ; vhd Boot requires CoCo Level 2  ; literal text or assembly diagnostic
                   ENDC            ; conditional assembly
                   IFLT    FATBase ; conditional assembly
                     error     FATBase   ; must be nonnegative  ; literal text or assembly diagnostic
@@ -106,7 +104,11 @@ halve               lsr       record,u  ; shift right record,u
 start               orcc      #IntMasks ; mask interrupts with #IntMasks
                     leas      -size,s   ; set S from -size,s
                     tfr       s,u       ; transfer registers s,u
+                  IFEQ    Level-1
+                    ldd       #$0500
+                  ELSE
                     ldd       #$0800    ; load D from #$0800
+                  ENDC
                     std       buffer,u  ; store D in buffer,u
                     lda       #DISKNUM  ; load A from #DISKNUM
                     sta       DEVADDR+6 ; store A in DEVADDR+6
@@ -262,7 +264,11 @@ found               ldd       30,x      ; load D from 30,x
                     std       ,--s      ; save exact size; STD also tests the full word for zero
                     beq       bad       ; branch if zero/equal to bad
                     pshs      u,x       ; preserve u,x on the private stack
+                  IFEQ    Level-1
+                    os9       F$SRqMem
+                  ELSE
                     os9       F$BtMem   ; os9 F$BtMem
+                  ENDC
                     tfr       u,y       ; transfer registers u,y
                     puls      u,x       ; restore u,x on the private stack
                     bcs       error     ; reject carry/overflow via error

@@ -2,6 +2,7 @@
 """Render the structured CI evidence report as a portable, linked PDF."""
 import argparse
 from html import escape
+import re
 import json
 from pathlib import Path
 
@@ -118,7 +119,7 @@ def render(report, output):
         if name.startswith('Filesystem integration ('):
             kind = name[len('Filesystem integration ('):-1]
             artifacts = ['filesystem-' + kind + '-results']
-            kind = kind.removesuffix('-6809').removesuffix('-6309')
+            kind = re.sub(r'-(?:l[12]-)?(?:6809|6309|coco2b|coco)$','',kind)
         elif name.startswith('Level One runtime ('):
             kind = 'level1'
             artifacts = ['level1-' + name[len('Level One runtime ('):-1] + '-results']

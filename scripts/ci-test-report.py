@@ -6,6 +6,7 @@ from collections import Counter
 from datetime import datetime
 import hashlib
 from html import escape
+import re
 import json
 from pathlib import Path
 import shutil
@@ -154,7 +155,7 @@ def generate(artifacts, run, jobs, output):
                 html += '<h4>Measured resource stability</h4><p>' + str(resource['cycles']) + ' balanced cycles after 10 warmups. Every checkpoint must match the starting resource counts, process mappings and path slots. Task counts include the constant temporary observation task.</p>'
                 html += table(['Cycle', 'Free 8K blocks', 'Processes', 'Tasks', 'Paths'], [[v['sequence'], v['metrics']['free_blocks'], v['metrics']['processes'], v['metrics']['tasks'], v['metrics']['paths']] for v in resource['checkpoints']])
             facts = [(key.replace('_', ' '), data[key]) for key in (
-                'passed', 'write_test', 'reopen', 'fat_integrity_checked', 'rbf_integrity_checked',
+                'passed', 'level', 'cpu', 'machine', 'write_test', 'reopen', 'fat_integrity_checked', 'rbf_integrity_checked',
                 'unrelated_file_preserved', 'random_seed', 'random_operations',
                 'parent_child_rename_checks', 'parent_child_rmdir_checks',
                 'parent_child_sharing_checks', 'recursive_directory_prompts', 'errors') if key in data]
@@ -174,7 +175,7 @@ def generate(artifacts, run, jobs, output):
         key, state = job_name(job), conclusion(job)
         wanted = required_artifacts(job)
         files = [p for p in sources if p.relative_to(artifacts).parts[0] in wanted]
-        body = '<p>' + escape(COVERAGE.get(key.removesuffix('-6809').removesuffix('-6309') if not key.startswith('Level One runtime (') else 'level1', 'Supporting setup job; see its step log for details.')) + '</p>'
+        body = '<p>' + escape(COVERAGE.get(re.sub(r'-(?:l[12]-)?(?:6809|6309|coco2b|coco)$','',key) if not key.startswith('Level One runtime (') else 'level1', 'Supporting setup job; see its step log for details.')) + '</p>'
         job_url = job.get('html_url') or job.get('url') or url
         body += '<p><a href="' + escape(job_url, quote=True) + '">Open job and assertion logs ↗</a> · ' + escape(duration(job)) + '</p>'
         results = [p for p in files if p.name == 'result.json' and p in saved]

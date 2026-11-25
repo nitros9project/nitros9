@@ -1,6 +1,6 @@
 # Local floppy OS plus an external FAT32 image on the MAME VHD device.
 override NITROS9DIR := $(abspath ../../..)
-LEVEL = 2
+LEVEL ?= 2
 TERM_COLS = 80
 RECIPE = coco3_fat_mame_test
 STARTUP =
@@ -13,7 +13,9 @@ BOOTMODS_EXTRA = pcf blkdrv llcocovhd pc0
 FATAUTO ?= fatauto
 RECIPE_DEPS = $(FATAUTO)
 RECIPE_INSTALL = $(CPL) $(FATAUTO) $(1),fatauto
-include ../coco3.mak
+include ../../support/filesystem-test-platform.mak
+include $(TEST_PLATFORM_MAKE)
+include ../../support/filesystem-test-rules.mak
 vpath %.asm $(NITROS9DIR)/level1/coco1/modules
 PYTHON ?= python3
 MAME_BINARY ?= mame
@@ -32,5 +34,5 @@ $(MODDIR)/blkdrv: $(DEFSDIR)/blkdrv.d
 $(MODDIR)/pc0: fatdesc.asm makefile | $(MODDIR)
 	$(AS) $(AFLAGS) $< $(ASOUT)$@ -DFATVHD=1 -DFATBase=0 -DFATLength=131072 -DFATPort=0xFF80
 check: $(DSKIMAGE) $(FAT_IMAGE)
-	$(PYTHON) $(NITROS9DIR)/scripts/fat32-mame.py --disk $(DSKIMAGE) --fat-image $(FAT_IMAGE) --cpu $(CPU) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
+	$(PYTHON) $(NITROS9DIR)/scripts/fat32-mame.py --disk $(DSKIMAGE) --fat-image $(FAT_IMAGE) --cpu $(CPU) $(TEST_MACHINE_FLAGS) --mame "$(MAME_BINARY)" --rompath "$(MAME_ROMPATH)" --seconds $(TEST_SECONDS) $(MAME_TEST_FLAGS) $(if $(MAME_VIDEO),--video "$(MAME_VIDEO)")
 .PHONY: check

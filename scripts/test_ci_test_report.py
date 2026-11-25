@@ -69,6 +69,17 @@ class ReportTests(unittest.TestCase):
         self.assertIn('Free 8K blocks',html)
         self.assertIn('<td>1000</td><td>47</td>',html)
 
+    def test_shared_level_profiles_route_to_matching_evidence(self):
+        jobs=[]
+        for profile in ('l1-coco','l1-coco2b','l2-6809','l2-6309'):
+            name='filesystem-rbf-'+profile+'-results'
+            artifact=self.artifacts/name;artifact.mkdir()
+            (artifact/'result.json').write_text('{"passed":true}')
+            jobs.append(dict(name='Filesystem integration (rbf-'+profile+')',conclusion='success'))
+        result,html=self.build(jobs)
+        self.assertFalse(result['warnings'])
+        self.assertNotIn('Supporting setup job',html)
+
     def test_failure_and_skips_remain_visible_without_artifacts(self):
         result, html = self.build([{'name': 'Full build', 'conclusion': 'failure'},
                                    {'name': 'MAME smoke tests', 'conclusion': 'skipped'}])

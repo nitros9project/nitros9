@@ -17,6 +17,8 @@ def main():
     parser.add_argument('--disk',type=Path,required=True)
     parser.add_argument('--fat-image',type=Path,required=True)
     parser.add_argument('--fat-boot',action='store_true',help='Remove the floppy OS9Boot and its boot pointer before testing')
+    parser.add_argument('--level',type=int,choices=(1,2),default=2)
+    parser.add_argument('--machine',choices=('coco','coco2b','coco3','coco3h'))
     parser.add_argument('--cpu',choices=('6809','6309'),default='6809')
     parser.add_argument('--mame',default='mame')
     parser.add_argument('--rompath',default=os.environ.get('MAME_ROMPATH',''))
@@ -44,7 +46,7 @@ def main():
     spec=importlib.util.spec_from_file_location('disk_script',ROOT/'scripts/mame-script.py')
     disk_script=importlib.util.module_from_spec(spec);spec.loader.exec_module(disk_script)
     (root/'TEST.CMD').write_bytes(disk_script.script(commands+['echo PCFREADONLYPASS']))
-    (root/'STARTUP').write_bytes(b'shell /dd/test.cmd\r')
+    (root/'STARTUP').write_bytes((b'load echo\r' if args.level==1 else b'')+b'r=</dd/test.cmd\r')
     for name in ('TEST.CMD','STARTUP'):
         subprocess.run(['os9','copy','-r',str(root/name),str(disk)+','+name.lower()],check=True,capture_output=True)
     source='completion_marker="PCFREADONLYPASS"\n'
@@ -53,8 +55,8 @@ def main():
     source+=(ROOT/'scripts/fat32-root-mame.lua').read_text()
     source+=(ROOT/'scripts/mame-disk-script.lua').read_text()
     lua.write_text(source)
-    command=[args.mame,('coco3h' if args.cpu=='6309' else 'coco3'),'-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
-        '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram','512K',
+    command=[args.mame,(args.machine or ('coco2b' if args.level==1 else ('coco3h' if args.cpu=='6309' else 'coco3'))),'-rompath',args.rompath,'-skip_gameinfo','-cfg_directory',str(root/'cfg'),
+        '-nvram_directory',str(root/'nvram'),'-snapshot_directory',str(root/'snap'),'-ram',('64K' if args.level==1 else '512K'),
         '-ext','fdc,bios=v11','-ext:fdc:wd17xx:0','525dd','-flop1',str(disk),'-hard1',str(media),
         '-seconds_to_run',str(args.seconds),'-autoboot_delay','3','-autoboot_script',str(lua),
         '-video','none','-sound','none','-nothrottle']
