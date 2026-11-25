@@ -47,6 +47,28 @@ class ReportTests(unittest.TestCase):
         self.assertTrue(next(i for i in inventory if i['path'].endswith('result.json'))['sha256'])
         self.assertNotIn('report_path', next(i for i in inventory if i['path'].endswith('guest.dsk')))
 
+    def test_cpu_and_level_one_jobs_find_their_own_evidence(self):
+        jobs=[{'name':'Filesystem integration (module-groups-6309)','conclusion':'success'},
+              {'name':'Level One runtime (coco2b)','conclusion':'success'}]
+        for job in jobs:
+            for name in report.required_artifacts(job):
+                artifact=self.artifacts/name;artifact.mkdir()
+                (artifact/'result.json').write_text('{"passed":true}')
+        result,html=self.build(jobs)
+        self.assertFalse(result['warnings'])
+        self.assertIn('CoCo 1/2 Level One boots',html)
+        self.assertIn('Synchronized two-process ownership',html)
+
+    def test_measured_resource_checkpoints_are_visible(self):
+        artifact=self.artifacts/'filesystem-module-groups-6809-results';artifact.mkdir()
+        metrics=dict(free_blocks=47,processes=5,tasks=4,paths=5)
+        (artifact/'result.json').write_text(json.dumps(dict(passed=True,resources=dict(cycles=1000,
+            checkpoints=[dict(sequence=n,metrics=metrics) for n in (0,100,1000)]))))
+        _,html=self.build([{'name':'Filesystem integration (module-groups-6809)','conclusion':'success'}])
+        self.assertIn('1000 balanced cycles',html)
+        self.assertIn('Free 8K blocks',html)
+        self.assertIn('<td>1000</td><td>47</td>',html)
+
     def test_failure_and_skips_remain_visible_without_artifacts(self):
         result, html = self.build([{'name': 'Full build', 'conclusion': 'failure'},
                                    {'name': 'MAME smoke tests', 'conclusion': 'skipped'}])
