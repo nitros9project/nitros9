@@ -25,7 +25,7 @@ COVERAGE = {
     'rfm': 'Real guest RFM requests go through a local DriveWire fixture, with protocol, returned-content, directory, and host-filesystem assertions.',
     'rfm-irq': 'RFM directory operations under forced DWIO interrupt polling, with protocol and returned-result assertions.',
     'level1': 'CoCo 1/2 Level One boots and verifies directory creation, 513-byte content, sector-boundary seeks, relative reopen, EOF and deletion.',
-    'module-groups': 'Synchronized two-process ownership and 1,000 balanced resource cycles supplement two distinct modules in single-block, multi-block and resident groups, in both unlink orders. Check survivor execution, duplicate-unlink protection, final unmapping and storage lifetime.',
+    'module-groups': 'Two-process ownership and measured resource cycles are shown when present in the evidence. The base cases use two distinct modules in single-block, multi-block and resident groups, in both unlink orders. Check survivor execution, duplicate-unlink protection, final unmapping and storage lifetime.',
 }
 ARTIFACTS = {
     'MAME smoke tests': ['mame-boot-results', 'game-boot-results'],
