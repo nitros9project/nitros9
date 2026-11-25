@@ -1,0 +1,13 @@
+name: Restore this run's verified MAME ROM bundle
+description: Download the prepared artifact and verify every archive without contacting the ROM host
+runs:
+  using: composite
+  steps:
+    - name: Download prepared ROM bundle
+      uses: actions/download-artifact@v4
+      with:
+        name: verified-mame-roms
+        path: ${{ runner.temp }}/roms
+    - name: Verify prepared ROM bundle
+      shell: bash
+      run: bash scripts/setup-mame-roms.sh "$RUNNER_TEMP/roms" --verify-only

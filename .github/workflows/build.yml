@@ -90,6 +90,15 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v5
+    - name: Restore or download verified ROMs once
+      uses: ./.github/actions/setup-mame-roms
+    - name: Share verified ROMs with this run
+      uses: actions/upload-artifact@v4
+      with:
+        name: verified-mame-roms
+        path: ${{ runner.temp }}/roms/*.zip
+        retention-days: 1
+        if-no-files-found: error
     - name: Build and cache pinned MAME once for all emulator jobs
       uses: ./.github/actions/setup-mame
 
@@ -124,7 +133,7 @@ jobs:
 
     - name: Set up verified ROMs
       id: roms
-      uses: ./.github/actions/setup-mame-roms
+      uses: ./.github/actions/restore-mame-roms
 
     - name: Boot 6809 floppy
       run: xvfb-run -a bash scripts/mame-boot-smoke.sh 6809 "$RUNNER_TEMP/roms" "$RUNNER_TEMP/mame-results/6809"
@@ -215,7 +224,7 @@ jobs:
     - name: Set up pinned MAME
       uses: ./.github/actions/setup-mame
     - name: Set up verified ROMs
-      uses: ./.github/actions/setup-mame-roms
+      uses: ./.github/actions/restore-mame-roms
     - name: Run existing filesystem integration suite
       env:
         FILESYSTEM_SUITE: ${{ matrix.suite }}
@@ -263,7 +272,7 @@ jobs:
         path: nitros9-languages
     - uses: ./.github/actions/setup-tools
     - uses: ./.github/actions/setup-mame
-    - uses: ./.github/actions/setup-mame-roms
+    - uses: ./.github/actions/restore-mame-roms
     - name: Boot Level One and verify RBF operations
       env:
         MAME_MACHINE: ${{ matrix.machine }}
