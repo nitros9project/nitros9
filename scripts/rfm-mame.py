@@ -483,7 +483,8 @@ def run(args):
     recipe=args.disk.resolve().parent
     auto=(recipe/'rfmauto').read_text().replace('shell </dd/rfmcheck','r=</dd/rfmcheck').replace('link shell\n','')
     if args.level==1:
-        auto=auto.replace('load utilpak1','load echo').replace('keyrpt 0 0</1','')
+        # Keep the same utilities available after chx leaves /dd/cmds.
+        auto=auto.replace('load utilpak1','load echo\nload dir\nload list').replace('keyrpt 0 0</1','')
     auto_file=root/'rfmauto';auto_file.write_bytes(auto.replace('\n','\r').encode())
     case_file=root/'rfmcheck';case_file.write_bytes(guest_script(recipe/'rfmcheck'))
     for source,name in [(case_file,'rfmcheck'),(auto_file,'rfmauto')]:
