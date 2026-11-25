@@ -52,7 +52,7 @@ def prepare(args):
     for name in commands:shutil.copyfile(recipe/'.mods'/name,stage/'CMDS'/name.upper())
     shutil.copyfile(recipe/'.mods/sysgo_dd',stage/'SYSGO')
     lines=(recipe/'commands').read_text().splitlines()
-    startup=('load echo\n' if args.level==1 else '')+(recipe/'startup').read_text()
+    startup='-p\n'+('load echo\n' if args.level==1 else '')+(recipe/'startup').read_text()
     script_names=['/TEST.CMD']
     if args.write_test:
         lines=lines[:-1]+(root/'random-commands').read_text().splitlines()+['echo DONE>/dd/testdone']+lines[-1:]
@@ -122,12 +122,15 @@ def run(args):
     print('Booting with FAT32 /DD and kernel-track-only floppy:',root,flush=True)
     with (logs/'mame.log').open('w') as log:
         subprocess.run(cmd,stdout=log,stderr=subprocess.STDOUT,check=True,timeout=seconds+60)
+    verify(args,root,logs,disk,media,hashes)
+
+
+def verify(args,root,logs,disk,media,hashes):
     assert hashes[0]==digest(disk),'bootstrap floppy changed'
     if args.reopen or not args.write_test:assert hashes[1]==digest(media),'read-only FAT32 image changed'
     console=(logs/'console.log').read_bytes()
     (logs/'console.txt').write_bytes(console.replace(b'\r',b'\n'))
-    startup=console.split(b'Shell+')[0]
-    assert b'FAT32STARTUPDONE' in startup and b'module directory' in startup.lower(),'startup did not finish before the interactive shell'
+    assert disk_script.startup_before_cases(console,b'FAT32STARTUPDONE'),'startup did not finish before the case script'
     errors=[int(n) for n in (logs/'errors.log').read_text().splitlines()]
     if args.reopen:
         assert errors==[],('reopen errors',errors)

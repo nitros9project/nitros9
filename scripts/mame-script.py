@@ -14,3 +14,12 @@ def script(lines):
 def answers(stage):
     (stage/'CANCEL.IN').write_bytes(b'l\ry\rq\r')
     (stage/'DELETE.IN').write_bytes(b'd\rd\rd\rd\r')
+
+
+def startup_before_cases(console, marker):
+    """Banner timing differs by boot setup; startup must precede actual cases."""
+    first_case=console.find(b'RUN 1 ')
+    if first_case < 0:
+        return False
+    startup=console[:first_case]
+    return marker in startup and b'module directory' in startup.lower()
