@@ -57,7 +57,7 @@ class ReportTests(unittest.TestCase):
         result,html=self.build(jobs)
         self.assertFalse(result['warnings'])
         self.assertIn('CoCo 1/2 Level One boots',html)
-        self.assertIn('Synchronized two-process ownership',html)
+        self.assertIn('Two-process ownership and measured resource cycles',html)
 
     def test_measured_resource_checkpoints_are_visible(self):
         artifact=self.artifacts/'filesystem-module-groups-6809-results';artifact.mkdir()
