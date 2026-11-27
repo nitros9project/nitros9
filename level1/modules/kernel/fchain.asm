@@ -376,9 +376,20 @@ FChainOffModMem     ldd       #M$Mem    ; get offset to module memory size
                     bcc       FChainTryDataMemory ; bigger, use it instead
                     lda       R$B,u     ; get callers memory size instead
                     clrb                ; clear LSB of mem size
-FChainTryDataMemory os9       F$Mem     ; try & get the data memory
-                    bcs       FChainPurge ; can't do it, exit with error
-                    ldx       6,s       ; restore process pointer
+* F$Mem refuses to shrink the data area below the caller's stack pointer, but
+* the old program's stack is discarded here, so hide it while resizing
+FChainTryDataMemory ldx       <D.Proc   ; get the process being rebuilt
+                    ldy       P$SP,x    ; get the old program's stack pointer
+                    pshs      y         ; keep it in case the resize fails
+                    ldy       #$0000    ; get a stack pointer below any data area
+                    sty       P$SP,x    ; let F$Mem shrink past the old stack
+                    os9       F$Mem     ; try & get the data memory
+                    puls      y         ; recover the old stack pointer
+                    bcc       FChainSetupStack ; got the memory, go on
+                    ldx       <D.Proc   ; get the process being rebuilt
+                    sty       P$SP,x    ; put its old stack pointer back for F$Exit
+                    bra       FChainPurge ; can't do it, exit with error
+FChainSetupStack    ldx       6,s       ; restore process pointer
                     leay      (P$Stack-R$Size),x ; point to new register stack
                     pshs      d         ; preserve memory size
                     subd      R$Y,u     ; take off size of paramater area
