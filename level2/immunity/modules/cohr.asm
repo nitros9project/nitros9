@@ -121,6 +121,26 @@ Attr                equ       VD.MCol   XORed onto glyph rows: NrmAttr or RevAtt
 UndrLn              equ       VD.MCol2  0 = no underline
 CrsOn               equ       VD.FF1    cursor is drawn on the screen
 
+* SSFM=1 adds a V9958 (SuperSprite-FM+) text screen next to the VDG ones,
+* SSFM=2 makes every console a V9958 screen. See ssfm.asm.
+                    IFNDEF    SSFM
+SSFM                equ       0
+                  ENDC
+
+* V9Test <label>: branch to the V9958 code when this device is a V9958
+* screen (SSFM=1: bit 6 of the parity byte; SSFM=2: always)
+                  IFNE    SSFM
+V9Test              macro
+                  IFEQ    SSFM-2
+                    lbra      \1
+                  ELSE
+                    ldb       <V.TYPE,u
+                    bitb      #$40
+                    lbne      \1
+                  ENDC
+                    endm
+                  ENDC
+
                     mod       eom,name,tylg,atrv,start,size
 
 u0000               rmb       0
@@ -139,6 +159,9 @@ start               lbra      Init
                     lbra      Term
 * CoWinSpc special processing entry (called from VTIO)
 * Entry: A = 0: select this screen (set the display), 1: update mouse packet
+                  IFNE    SSFM
+                    V9Test    V9Spec
+                  ENDC
                     tsta
                     bne       Spc1
                     tst       >WGlobal+G.CrDvFl ; are we the displayed device?
@@ -158,6 +181,9 @@ NoOp                clrb
 **************************************************
 * Init: get a screen and clear it
 Init                pshs      u,y,x
+                  IFNE    SSFM
+                    V9Test    V9Init
+                  ENDC
                     lbsr      GetBlk    ; b = VDG pool block
                     lbcs      InitRts
                     stb       <VD.GBuff,u
@@ -206,9 +232,12 @@ InitRts             puls      pc,u,y,x
 **************************************************
 * Term: give the screen back
 Term                pshs      u,y,x
+                  IFNE    SSFM
+                    V9Test    V9Term
+                  ENDC
                     clr       <VD.Start,u
                     lbsr      FreeBlk   ; give the screen block back to the pool
-                    ldb       #$E1      ; clear the VDG statics
+ClrStat             ldb       #$E1      ; clear the VDG statics
                     leax      <VD.Strt1,u
 TermLp              clr       ,x+
                     decb
@@ -219,7 +248,11 @@ TermLp              clr       ,x+
 **************************************************
 * Write
 * Entry: A = char to write, Y = path descriptor, U = device statics
-Write               leax      WriteIn,pcr
+Write               equ       *
+                  IFNE    SSFM
+                    V9Test    V9Write
+                  ENDC
+                    leax      WriteIn,pcr
 
 * Run a screen routine: map the screen in, take the cursor off, call it,
 * put the cursor back, map the screen out. CC and B come from the routine.
@@ -391,7 +424,7 @@ EscPal              leax      RtsOk,pcr
 * $1B A xx yy: ask VTIO for 2 more bytes
 EscGoto             leax      <EscGotoM,pcr
 Get2                ldb       #2
-                    stb       <VD.NGChr,u
+GChar               stb       <VD.NGChr,u
                     stx       <VD.RTAdd,u
                     clrb
                     rts
@@ -699,7 +732,11 @@ PutLn2              ldd       2,s
 
 **************************************************
 * GetStat
-GetStat             ldx       PD.RGS,y
+GetStat             equ       *
+                  IFNE    SSFM
+                    V9Test    V9GetStat
+                  ENDC
+                    ldx       PD.RGS,y
                     cmpa      #SS.ScSiz
                     beq       Rt.ScSiz
                     cmpa      #SS.Cursr
@@ -735,7 +772,11 @@ Rt.Cursr            clra
 
 **************************************************
 * SetStat: SS.ComSt (true lower case) is accepted and ignored
-SetStat             cmpa      #SS.ComSt
+SetStat             equ       *
+                  IFNE    SSFM
+                    V9Test    V9SetStat
+                  ENDC
+                    cmpa      #SS.ComSt
                     lbeq      NoOp
                     comb
                     ldb       #E$UnkSvc
@@ -797,7 +838,13 @@ UnMap               pshs      x,b,cc
 
 * Show this screen: SAM mode 6R (V=110) at the block's motherboard
 * address, VDG PMODE 4 (G/A=1 GM=111, CSS from VdgMode)
-SetVid              lda       >PIA1B
+SetVid              equ       *
+                  IFNE    SSFM
+                    pshs      d,x       ; the VDG is being displayed: route the monitor to it
+                    lbsr      VdpHide
+                    puls      d,x
+                  ENDC
+                    lda       >PIA1B
                     anda      #%00000111
                     ora       #VdgMode
                     sta       >PIA1B
@@ -1011,6 +1058,14 @@ CharacterShapes
                     fcb       $C2,$32,$C0,$00 ....  ...@  ....  ....  ....  ....  ....  @@@@
                     fcb       $05,$A0,$00,$00 ....  @@@.  ....  ....  ....  ....  ....  @@@@
                     fcb       $FF,$FF,$FF,$F0 ....  ....  ....  ....  ....  ....  ....  ....
+                  ENDC
+
+                  IFNE    SSFM
+* ssfm.asm calls CoVDG's window-select code (ESC $21) as L0209. This driver
+* has none, so on a V9958 screen of a hi-res build ESC $21 does nothing.
+L0209               clrb
+                    rts
+                    use       ssfm.asm
                   ENDC
 
                     emod
