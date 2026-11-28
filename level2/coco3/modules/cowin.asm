@@ -47,6 +47,10 @@
 *   can access them easily. Grfdrv, since it gets it's own 64k map, will have it's own
 *   copies and vectors.
 
+*          2026/11/28
+* Return the mapped address and length when SS.MpGPB finds the buffer
+* already present in the caller's DAT image.
+*
                     nam       CoGrf/CoWin
                     ttl       NitrOS-9 Window Module
 
@@ -58,7 +62,7 @@
 tylg                set       Systm+Objct
 atrv                set       ReEnt+rev
 rev                 set       $00
-edition             equ       2
+edition             equ       3
 
 * Color table for 3D look stuff & others
 * This should now match VIEW's color table (darkest to lightest for predictable
@@ -2467,15 +2471,15 @@ L0BD1               ldx       PD.RGS,y            get register stack pointer
                     stb       1,s                 save error code if any
                     bcs       L0C19               return if there was a error
                     tfr       u,d                 copy start address to D
-                    ldx       2,s                 get register stack pointer
+MapGPBReturn        ldx       2,s                 get register stack pointer
                     addd      >GrfMem+gr009D      add in offset to buffer
                     std       R$X,x               save offset into block of buffer
                     ldd       >GrfMem+gr009B      get length of buffer
                     std       R$Y,x               save it into callers Y
 L0C19               puls      d,x,u,pc            restore regs & return
 
-L0C1B               leas      2,s                 purge stack
-                    puls      pc,u,x
+L0C1B               lsla                          DAT slot * 16 -> high byte of 8K logical base
+                    bra       MapGPBReturn        Return address and length as for a new mapping
 
 * Remove get/put buffer from process space
 L0C1F               pshs      a,x,y               preserve # blocks, register stack & window table
